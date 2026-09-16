@@ -13,12 +13,11 @@
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
-    .document-card { font-family: 'Courier New', Courier, monospace; }
+    .exam-paper { font-family: Arial, Helvetica, sans-serif; }
     @keyframes pulse-glow {
       0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
       50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.8); }
     }
-    .glow-active { animation: pulse-glow 2s infinite; }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-emerald-500 selection:text-white">
@@ -127,12 +126,15 @@
         </div>
       </div>
 
-      <!-- Source Docs -->
+      <!-- Source Docs Section (Authentic Exam Paper Format) -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Scenario Source Documents
-        </h2>
-        <div id="documentsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Source Documents (Exam Reference)
+          </h2>
+          <span class="text-[10px] text-slate-500 uppercase font-semibold">Official Business Paper Design</span>
+        </div>
+        <div id="documentsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
       </div>
 
       <!-- Daybook Inputs -->
@@ -366,9 +368,9 @@
         osc.start(); osc.stop(audioCtx.currentTime + 0.05);
       } else if (type === 'success') {
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
-        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); 
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); 
         gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
         osc.start(); osc.stop(audioCtx.currentTime + 0.35);
       } else if (type === 'unlock') {
@@ -432,7 +434,6 @@
         timestamp: Date.now()
       };
       
-      // Update local state immediately
       updateLeaderboardData(payload);
 
       if (mqttClient && mqttClient.connected) {
@@ -510,12 +511,24 @@
 
     // --- DAYBOOK GENERATION LOGIC ---
     const COMPANY_NAME = "BRIGHT STAR TRADING";
-    const COMPANY_ADDRESS = "12 Merdeka Street, Jakarta";
-    const SUPPLIERS = [{ name: "NUSANTARA SUPPLIERS" }, { name: "GLOBAL PAPER CO." }];
-    const CUSTOMERS = [{ name: "Green Valley Stores" }, { name: "City Mart Ltd" }];
-    const ITEMS = [
-      { desc: "Office chairs", buyPrice: 50, sellPrice: 80 },
-      { desc: "Desk lamps", buyPrice: 15, sellPrice: 25 }
+    const COMPANY_ADDR = "12 Merdeka Street, Jakarta 10110";
+    const COMPANY_TEL = "Tel: 021-555-1200 | sales@brightstar.co.id";
+
+    const SUPPLIERS = [
+      { name: "NUSANTARA SUPPLIERS", addr: "77 Industrial Estate, Bekasi 17510", tel: "Tel: 021-888-3400 | orders@nusantara.id" },
+      { name: "GLOBAL PAPER CO.", addr: "9 Paper Mill Road, Tangerang", tel: "Tel: 021-777-2100" }
+    ];
+
+    const CUSTOMERS = [
+      { name: "Green Valley Stores", addr: "45 Orchard Road, Bandung" },
+      { name: "City Mart Ltd", addr: "88 High Street, Surabaya" }
+    ];
+
+    const SAMPLE_ITEMS = [
+      { desc: "Office chairs (Model A)", buyPrice: 55.00, sellPrice: 85.00 },
+      { desc: "Desk lamps", buyPrice: 14.00, sellPrice: 22.50 },
+      { desc: "Printer paper (reams)", buyPrice: 3.20, sellPrice: 4.80 },
+      { desc: "Filing cabinets", buyPrice: 95.00, sellPrice: 160.00 }
     ];
 
     function initRound() {
@@ -527,40 +540,115 @@
     function generateDaybookScenario() {
       currentRoundDocs = [];
       const types = ['PI', 'SI', 'PR', 'SR'];
+      
       for (let i = 0; i < 4; i++) {
         const type = types[i];
-        const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
-        const qty = Math.floor(Math.random() * 10) + 5;
-        const discountRate = 10;
-        const gross = qty * (type === 'PI' || type === 'PR' ? item.buyPrice : item.sellPrice);
-        const netAmount = gross * 0.9;
+        const item = SAMPLE_ITEMS[i % SAMPLE_ITEMS.length];
+        const qty = (i % 2 === 0) ? 10 : 25;
+        const discountRate = (i % 2 === 0) ? 5 : 0;
+        
+        const unitPrice = (type === 'PI' || type === 'PR') ? item.buyPrice : item.sellPrice;
+        const subtotal = qty * unitPrice;
+        const discountVal = (subtotal * discountRate) / 100;
+        const netAmount = subtotal - discountVal;
+
+        const supplier = SUPPLIERS[i % SUPPLIERS.length];
+        const customer = CUSTOMERS[i % CUSTOMERS.length];
+
+        let docNo = "";
+        if (type === 'PI') docNo = `PI-${8815 + i}`;
+        if (type === 'SI') docNo = `SI-${2401 + i}`;
+        if (type === 'PR') docNo = `CN-P${330 + i}`;
+        if (type === 'SR') docNo = `CN-S${90 + i}`;
 
         currentRoundDocs.push({
-          id: i + 1, type, date: `${i + 2} Aug 2026`,
-          partyName: (type === 'PI' || type === 'PR') ? SUPPLIERS[0].name : CUSTOMERS[0].name,
-          docNo: `${type}-${1000 + i}`,
-          item, qty, unitPrice: type === 'PI' || type === 'PR' ? item.buyPrice : item.sellPrice,
-          discountRate, netAmount
+          id: i + 1,
+          type,
+          docNo,
+          date: `${(i + 1) * 3} August 2026`,
+          issuerName: (type === 'SI' || type === 'SR') ? COMPANY_NAME : supplier.name,
+          issuerAddr: (type === 'SI' || type === 'SR') ? COMPANY_ADDR : supplier.addr,
+          issuerTel: (type === 'SI' || type === 'SR') ? COMPANY_TEL : supplier.tel,
+          recipientLabel: (type === 'SI' || type === 'SR') ? "Customer:" : "Sold to:",
+          recipientName: (type === 'SI' || type === 'SR') ? customer.name : COMPANY_NAME,
+          recipientAddr: (type === 'SI' || type === 'SR') ? customer.addr : COMPANY_ADDR,
+          partyName: (type === 'PI' || type === 'PR') ? supplier.name : customer.name,
+          docTitle: (type === 'PI' || type === 'SI') ? "INVOICE" : "CREDIT NOTE",
+          itemDesc: (type === 'PR' || type === 'SR') ? `${item.desc} - damaged` : item.desc,
+          qty,
+          unitPrice,
+          subtotal,
+          discountRate,
+          discountVal,
+          netAmount,
+          refNote: (type === 'PR') ? `Return against Invoice PI-${8815 + i - 2}` : (type === 'SR' ? `Return of goods from Invoice SI-${2401 + i - 2}` : null)
         });
       }
       renderSourceDocuments();
     }
 
+    // Dynamic renderer mirroring exact layout and style of the exam document
     function renderSourceDocuments() {
       const container = document.getElementById('documentsContainer');
       container.innerHTML = '';
+
       currentRoundDocs.forEach(doc => {
-        const isSales = doc.type === 'SI' || doc.type === 'SR';
         const card = document.createElement('div');
-        card.className = "document-card bg-amber-50 text-slate-900 rounded-xl p-3 text-xs border border-amber-200 shadow space-y-1.5";
+        card.className = "exam-paper bg-white text-slate-900 rounded-lg p-5 border border-slate-300 shadow-md space-y-3 relative text-xs";
+        
         card.innerHTML = `
-          <div class="flex justify-between font-bold border-b pb-1">
-            <span>${isSales ? COMPANY_NAME : doc.partyName}</span>
-            <span class="text-emerald-700">${doc.type} (${doc.docNo})</span>
+          <!-- Header Bar -->
+          <div class="flex justify-between items-start border-b border-slate-300 pb-2">
+            <div>
+              <h3 class="font-bold text-sm text-black uppercase tracking-tight">${doc.issuerName}</h3>
+              <p class="text-[11px] text-slate-600">${doc.issuerAddr}</p>
+              <p class="text-[10px] text-slate-500">${doc.issuerTel}</p>
+            </div>
+            <div class="text-right">
+              <span class="inline-block text-xs font-black px-2 py-0.5 border border-slate-800 tracking-wider">${doc.docTitle}</span>
+              <p class="text-[11px] font-bold text-slate-800 mt-1">No: ${doc.docNo}</p>
+              <p class="text-[10px] text-slate-600">Date: ${doc.date}</p>
+            </div>
           </div>
-          <div>To: ${isSales ? doc.partyName : COMPANY_NAME} | Date: ${doc.date}</div>
-          <div>Item: ${doc.qty}x ${doc.item.desc} @ $${doc.unitPrice} (Disc: ${doc.discountRate}%)</div>
-          <div class="text-right font-black text-sm">Net Total: $${doc.netAmount.toFixed(2)}</div>
+
+          <!-- Recipient Details -->
+          <div class="text-[11px]">
+            <span class="font-bold text-slate-700">${doc.recipientLabel}</span> <span class="font-bold text-black">${doc.recipientName}</span><br>
+            <span class="text-slate-600">${doc.recipientAddr}</span>
+          </div>
+
+          <!-- Items Table -->
+          <table class="w-full text-left border-collapse my-2 text-[11px]">
+            <thead>
+              <tr class="border-b border-t border-slate-400 text-slate-700">
+                <th class="py-1 font-bold">Description</th>
+                <th class="py-1 font-bold text-center">Qty</th>
+                <th class="py-1 font-bold text-right">Unit $</th>
+                <th class="py-1 font-bold text-right">Amount $</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 text-slate-800">
+              <tr>
+                <td class="py-1.5 font-medium">${doc.itemDesc}</td>
+                <td class="py-1.5 text-center">${doc.qty}</td>
+                <td class="py-1.5 text-right">${doc.unitPrice.toFixed(2)}</td>
+                <td class="py-1.5 text-right">${doc.subtotal.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Footer Calculation -->
+          <div class="border-t border-slate-300 pt-2 space-y-0.5 text-[11px] text-right">
+            ${doc.discountRate > 0 ? `
+              <div><span class="text-slate-600">Subtotal:</span> $${doc.subtotal.toFixed(2)}</div>
+              <div><span class="text-slate-600">Trade Discount ${doc.discountRate}%:</span> $${doc.discountVal.toFixed(2)}</div>
+            ` : ''}
+            <div class="font-black text-xs text-black pt-0.5 border-t border-slate-400 inline-block pl-4">
+              TOTAL: $${doc.netAmount.toFixed(2)}
+            </div>
+            ${doc.refNote ? `<div class="text-left text-[10px] text-slate-500 italic pt-1">${doc.refNote}</div>` : ''}
+            <div class="text-left text-[10px] text-slate-600 font-semibold pt-1">Terms: Net 30 days</div>
+          </div>
         `;
         container.appendChild(card);
       });
@@ -770,13 +858,11 @@
       document.getElementById('userXp').innerText = player.xp;
       document.getElementById('userStreak').innerText = `${player.streak} 🔥`;
 
-      // Trigger Visual Dopamine Confetti
       if (accuracy >= 80) {
         playSfx('success');
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       }
 
-      // Sync Realtime MQTT Score
       publishScore();
 
       document.getElementById('evalTitle').innerText = title;
