@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="en" class="h-full bg-slate-900 text-slate-100">
 <head>
     <meta charset="UTF-8">
@@ -213,7 +213,11 @@
                             <span>Daybooks & Ledgers Challenge</span>
                             <span id="daybookRoundBadge" class="bg-brand-500/20 text-brand-400 text-xs px-2 py-0.5 rounded border border-brand-500/30">Round 1</span>
                         </h2>
-                        <p class="text-xs text-slate-400">Post all documents into proper Daybooks and post totals/entries to Ledgers</p>
+                        <!-- Company identity display -->
+                        <p class="text-xs text-slate-300 mt-0.5 flex items-center gap-1.5">
+                            <span>You are the Accountant for:</span>
+                            <span id="myCompanyNameDisplay" class="font-extrabold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">Bright Star Trading Ltd</span>
+                        </p>
                     </div>
                 </div>
 
@@ -221,8 +225,13 @@
                     <button onclick="showDaybookHint()" class="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-xl text-xs font-semibold border border-amber-500/40 transition flex items-center gap-1.5">
                         <i class="fa-regular fa-lightbulb"></i> Need Hint
                     </button>
-                    <button onclick="submitDaybookAnswer()" class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-brand-600/30 transition flex items-center gap-2">
-                        <i class="fa-solid fa-paper-plane"></i> Submit & Check Answers
+                    <!-- Stage 1 Button -->
+                    <button id="checkDaybooksBtn" onclick="checkDaybookStage()" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-brand-600/30 transition flex items-center gap-2">
+                        <i class="fa-solid fa-list-check"></i> 1. Check Daybooks & Unlock Ledgers
+                    </button>
+                    <!-- Stage 2 Button (Initially Disabled/Hidden until Daybooks checked) -->
+                    <button id="submitLedgersBtn" onclick="submitDaybookAnswer()" class="hidden px-4 py-2 bg-accent-600 hover:bg-accent-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-accent-600/30 transition flex items-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> 2. Submit Ledgers & Finish
                     </button>
                 </div>
             </div>
@@ -266,11 +275,13 @@
                 <div class="lg:col-span-7 space-y-4">
                     <!-- Tab Switcher -->
                     <div class="flex border-b border-slate-800 bg-slate-900/80 p-1 rounded-xl">
-                        <button id="tabBtnDaybooks" onclick="switchDaybookTab('daybooks')" class="flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-brand-600 text-white shadow transition">
-                            1. Books of Prime Entry (Daybooks)
+                        <button id="tabBtnDaybooks" onclick="switchDaybookTab('daybooks')" class="flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-brand-600 text-white shadow transition flex items-center justify-center gap-2">
+                            <span>1. Books of Prime Entry</span>
+                            <span id="daybookStageStatus" class="text-[10px] bg-slate-800 text-amber-400 px-1.5 py-0.5 rounded">In Progress</span>
                         </button>
-                        <button id="tabBtnLedgers" onclick="switchDaybookTab('ledgers')" class="flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition">
-                            2. Ledger Accounts (T-Accounts)
+                        <button id="tabBtnLedgers" onclick="switchDaybookTab('ledgers')" class="flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-2">
+                            <i id="ledgerLockIcon" class="fa-solid fa-lock text-slate-500"></i>
+                            <span>2. Ledger Accounts (T-Accounts)</span>
                         </button>
                     </div>
 
@@ -625,6 +636,8 @@
             round: 1,
             // Mode 1 state
             daybookData: null,
+            daybookStage: 1, // 1: Daybooks entry, 2: Ledgers entry
+            daybooksPassed: false,
             // Mode 2 state
             cashbookData: null,
             // Local leaderboard
@@ -720,273 +733,113 @@
             { name: 'Beacon Commercials', type: 'customer' }
         ];
 
+        const MY_BUSINESS_NAMES = [
+            'Bright Star Trading Ltd',
+            'Apex Mercantile Co',
+            'Vanguard Commercials Ltd',
+            'Horizon Traders',
+            'Pinnacle Enterprise'
+        ];
+
         function generateDaybookScenario() {
-            // Generate 4 source documents
+            const myCompany = MY_BUSINESS_NAMES[Math.floor(Math.random() * MY_BUSINESS_NAMES.length)];
             const suppliers = COMPANY_NAMES.filter(c => c.type === 'supplier');
             const customers = COMPANY_NAMES.filter(c => c.type === 'customer');
 
             const sup1 = suppliers[Math.floor(Math.random() * suppliers.length)].name;
             const cust1 = customers[Math.floor(Math.random() * customers.length)].name;
 
-            const docs = [
-                {
-                    id: 'doc1',
-                    type: 'INVOICE_RECEIVED', // Credit Purchase
-                    title: 'INVOICE (RECEIVED)',
-                    docNo: 'INV-' + Math.floor(1000 + Math.random() * 9000),
-                    date: '04 Aug 2026',
-                    from: sup1,
-                    to: 'Bright Star Trading',
-                    items: [{ desc: 'Office Printing Paper (100 boxes)', qty: 10, unit: 40, gross: 400 }],
-                    discountPct: 10, // 10% trade discount
-                    get net() { return 400 - (400 * 0.1); }, // 360
-                    targetDaybook: 'PDB',
-                    party: sup1
-                },
-                {
-                    id: 'doc2',
-                    type: 'INVOICE_ISSUED', // Credit Sales
-                    title: 'INVOICE (ISSUED)',
-                    docNo: 'INV-' + Math.floor(5000 + Math.random() * 9000),
-                    date: '10 Aug 2026',
-                    from: 'Bright Star Trading',
-                    to: cust1,
-                    items: [{ desc: 'Executive Desks & Chairs', qty: 2, unit: 300, gross: 600 }],
-                    discountPct: 5,
-                    get net() { return 600 - (600 * 0.05); }, // 570
-                    targetDaybook: 'SDB',
-                    party: cust1
-                },
-                {
-                    id: 'doc3',
-                    type: 'CREDIT_NOTE_RECEIVED', // Purchase Return
-                    title: 'CREDIT NOTE (RECEIVED)',
-                    docNo: 'CN-' + Math.floor(1000 + Math.random() * 9000),
-                    date: '16 Aug 2026',
-                    from: sup1,
-                    to: 'Bright Star Trading',
-                    items: [{ desc: 'Damaged Printing Paper Returned', qty: 2, unit: 40, gross: 80 }],
-                    discountPct: 10,
-                    get net() { return 80 - (80 * 0.1); }, // 72
-                    targetDaybook: 'PRB',
-                    party: sup1
-                },
-                {
-                    id: 'doc4',
-                    type: 'CREDIT_NOTE_ISSUED', // Sales Return
-                    title: 'CREDIT NOTE (ISSUED)',
-                    docNo: 'CN-' + Math.floor(5000 + Math.random() * 9000),
-                    date: '22 Aug 2026',
-                    from: 'Bright Star Trading',
-                    to: cust1,
-                    items: [{ desc: 'Returned Faulty Executive Chair', qty: 1, unit: 100, gross: 100 }],
-                    discountPct: 5,
-                    get net() { return 100 - (100 * 0.05); }, // 95
-                    targetDaybook: 'SRB',
-                    party: cust1
+            const availableTypes = ['INVOICE_RECEIVED', 'INVOICE_ISSUED', 'CREDIT_NOTE_RECEIVED', 'CREDIT_NOTE_ISSUED'];
+            const docCount = 4 + Math.floor(Math.random() * 2);
+            
+            const docs = [];
+            const totals = { PDB: 0, SDB: 0, PRB: 0, SRB: 0 };
+
+            for (let i = 0; i < docCount; i++) {
+                const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+                const dates = ['03 Aug 2026', '07 Aug 2026', '12 Aug 2026', '18 Aug 2026', '24 Aug 2026'];
+                const docDate = dates[i % dates.length];
+
+                let doc = {};
+                const grossAmount = Math.floor(100 + Math.random() * 800);
+                const discountPct = Math.random() > 0.4 ? (Math.random() > 0.5 ? 10 : 5) : 0;
+                const netAmount = grossAmount - (grossAmount * (discountPct / 100));
+
+                if (type === 'INVOICE_RECEIVED') {
+                    doc = {
+                        id: `doc_${i+1}`,
+                        type: type,
+                        title: 'INVOICE (PURCHASES)',
+                        docNo: 'INV-' + Math.floor(1000 + Math.random() * 9000),
+                        date: docDate,
+                        from: sup1,
+                        to: myCompany,
+                        items: [{ desc: 'Resale Inventory Goods Packet', qty: 1, unit: grossAmount, gross: grossAmount }],
+                        discountPct: discountPct,
+                        net: netAmount,
+                        targetDaybook: 'PDB',
+                        party: sup1
+                    };
+                    totals.PDB += netAmount;
+                } else if (type === 'INVOICE_ISSUED') {
+                    doc = {
+                        id: `doc_${i+1}`,
+                        type: type,
+                        title: 'INVOICE (SALES)',
+                        docNo: 'INV-' + Math.floor(5000 + Math.random() * 9000),
+                        date: docDate,
+                        from: myCompany,
+                        to: cust1,
+                        items: [{ desc: 'Commercial Inventory Supplies', qty: 1, unit: grossAmount, gross: grossAmount }],
+                        discountPct: discountPct,
+                        net: netAmount,
+                        targetDaybook: 'SDB',
+                        party: cust1
+                    };
+                    totals.SDB += netAmount;
+                } else if (type === 'CREDIT_NOTE_RECEIVED') {
+                    doc = {
+                        id: `doc_${i+1}`,
+                        type: type,
+                        title: 'CREDIT NOTE (PURCHASES RETURN)',
+                        docNo: 'CN-' + Math.floor(1000 + Math.random() * 9000),
+                        date: docDate,
+                        from: sup1,
+                        to: myCompany,
+                        items: [{ desc: 'Returned Damaged Stock Goods', qty: 1, unit: grossAmount, gross: grossAmount }],
+                        discountPct: discountPct,
+                        net: netAmount,
+                        targetDaybook: 'PRB',
+                        party: sup1
+                    };
+                    totals.PRB += netAmount;
+                } else {
+                    doc = {
+                        id: `doc_${i+1}`,
+                        type: type,
+                        title: 'CREDIT NOTE (SALES RETURN)',
+                        docNo: 'CN-' + Math.floor(5000 + Math.random() * 9000),
+                        date: docDate,
+                        from: myCompany,
+                        to: cust1,
+                        items: [{ desc: 'Customer Returned Faulty Items', qty: 1, unit: grossAmount, gross: grossAmount }],
+                        discountPct: discountPct,
+                        net: netAmount,
+                        targetDaybook: 'SRB',
+                        party: cust1
+                    };
+                    totals.SRB += netAmount;
                 }
-            ];
+                docs.push(doc);
+            }
 
             return {
+                myCompany,
                 docs,
                 supplier: sup1,
                 customer: cust1,
-                totals: {
-                    PDB: docs[0].net,
-                    SDB: docs[1].net,
-                    PRB: docs[2].net,
-                    SRB: docs[3].net
-                }
+                totals
             };
-        }
-
-        function startDaybookGame() {
-            playSound('click');
-            state.currentMode = 'daybook';
-            document.getElementById('dashboardView').classList.add('hidden');
-            document.getElementById('daybookGameView').classList.remove('hidden');
-            document.getElementById('daybookRoundBadge').innerText = `Round ${state.round}`;
-
-            state.daybookData = generateDaybookScenario();
-            renderSourceDocuments();
-            initDaybookForms();
-            renderDaybookLedgers();
-        }
-
-        function renderSourceDocuments() {
-            const container = document.getElementById('sourceDocsContainer');
-            const data = state.daybookData;
-            document.getElementById('docCountBadge').innerText = `${data.docs.length} Source Documents`;
-
-            container.innerHTML = data.docs.map(doc => {
-                const isInvoice = doc.type.includes('INVOICE');
-                const isReceived = doc.type.includes('RECEIVED');
-                
-                return `
-                <div class="glass-card-light rounded-2xl p-5 shadow-xl border-l-8 ${isInvoice ? 'border-l-brand-500' : 'border-l-amber-500'} font-sans relative group">
-                    <div class="flex justify-between items-start border-b pb-3 border-slate-200">
-                        <div>
-                            <span class="text-[10px] font-extrabold uppercase tracking-widest ${isInvoice ? 'text-brand-700 bg-brand-100' : 'text-amber-800 bg-amber-100'} px-2 py-0.5 rounded">
-                                ${doc.title}
-                            </span>
-                            <h4 class="font-extrabold text-slate-800 text-base mt-1">${doc.from}</h4>
-                        </div>
-                        <div class="text-right">
-                            <span class="font-mono text-xs font-bold text-slate-600 block">${doc.docNo}</span>
-                            <span class="text-xs text-slate-500">${doc.date}</span>
-                        </div>
-                    </div>
-
-                    <div class="my-3 text-xs text-slate-600">
-                        <p><strong>To / Customer:</strong> ${doc.to}</p>
-                    </div>
-
-                    <table class="w-full text-xs my-2 border-t border-b border-slate-200 py-1">
-                        <thead>
-                            <tr class="text-slate-500 text-left border-b border-slate-200">
-                                <th class="py-1">Description</th>
-                                <th class="py-1 text-center">Qty</th>
-                                <th class="py-1 text-right">Unit ($)</th>
-                                <th class="py-1 text-right">Total ($)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${doc.items.map(item => `
-                                <tr class="text-slate-700">
-                                    <td class="py-1">${item.desc}</td>
-                                    <td class="py-1 text-center">${item.qty}</td>
-                                    <td class="py-1 text-right">${item.unit.toFixed(2)}</td>
-                                    <td class="py-1 text-right font-mono">${item.gross.toFixed(2)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-
-                    <div class="space-y-1 text-xs text-slate-600 text-right">
-                        <div>Subtotal: <span class="font-mono">$${doc.items[0].gross.toFixed(2)}</span></div>
-                        ${doc.discountPct > 0 ? `<div class="text-amber-700 font-semibold">Less ${doc.discountPct}% Trade Discount: <span class="font-mono">-$${(doc.items[0].gross * (doc.discountPct/100)).toFixed(2)}</span></div>` : ''}
-                        <div class="text-sm font-extrabold text-slate-900 pt-1 border-t border-slate-300">
-                            NET TOTAL: <span class="font-mono text-brand-700">$${doc.net.toFixed(2)}</span>
-                        </div>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        function initDaybookForms() {
-            // Add default empty row to each daybook
-            document.getElementById('pdbRows').innerHTML = '';
-            document.getElementById('sdbRows').innerHTML = '';
-            document.getElementById('prbRows').innerHTML = '';
-            document.getElementById('srbRows').innerHTML = '';
-
-            addPdbRow();
-            addSdbRow();
-            addPrbRow();
-            addSrbRow();
-        }
-
-        function addRowHTML(tableId, placeholderParty) {
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-800/40 transition';
-            tr.innerHTML = `
-                <td class="p-1.5"><input type="text" placeholder="e.g. 04 Aug" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-white focus:border-brand-500 outline-none"></td>
-                <td class="p-1.5"><input type="text" placeholder="${placeholderParty}" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:border-brand-500 outline-none"></td>
-                <td class="p-1.5"><input type="number" step="0.01" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-right text-brand-400 focus:border-brand-500 outline-none"></td>
-                <td class="p-1.5 text-center"><button onclick="this.closest('tr').remove()" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
-            `;
-            document.getElementById(tableId).appendChild(tr);
-        }
-
-        function addPdbRow() { addRowHTML('pdbRows', 'Supplier Name'); }
-        function addSdbRow() { addRowHTML('sdbRows', 'Customer Name'); }
-        function addPrbRow() { addRowHTML('prbRows', 'Supplier Name'); }
-        function addSrbRow() { addRowHTML('srbRows', 'Customer Name'); }
-
-        function switchDaybookTab(tab) {
-            playSound('click');
-            const btnDb = document.getElementById('tabBtnDaybooks');
-            const btnLg = document.getElementById('tabBtnLedgers');
-            const contentDb = document.getElementById('daybooksTabContent');
-            const contentLg = document.getElementById('ledgersTabContent');
-
-            if (tab === 'daybooks') {
-                btnDb.className = 'flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-brand-600 text-white shadow transition';
-                btnLg.className = 'flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition';
-                contentDb.classList.remove('hidden');
-                contentLg.classList.add('hidden');
-            } else {
-                btnLg.className = 'flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-brand-600 text-white shadow transition';
-                btnDb.className = 'flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition';
-                contentLg.classList.remove('hidden');
-                contentDb.classList.add('hidden');
-            }
-        }
-
-        function renderDaybookLedgers() {
-            const container = document.getElementById('ledgersContainer');
-            const data = state.daybookData;
-
-            const ledgersList = [
-                { name: 'Purchases Account (General Ledger)', type: 'Nominal' },
-                { name: 'Sales Account (General Ledger)', type: 'Nominal' },
-                { name: 'Purchases Returns Account (General Ledger)', type: 'Nominal' },
-                { name: 'Sales Returns Account (General Ledger)', type: 'Nominal' },
-                { name: `${data.supplier} (Trade Payable Ledger)`, type: 'Supplier' },
-                { name: `${data.customer} (Trade Receivable Ledger)`, type: 'Customer' }
-            ];
-
-            container.innerHTML = ledgersList.map((lg, idx) => `
-                <div class="glass-card rounded-2xl p-4 border border-slate-800 space-y-2">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                        <h4 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                            <i class="fa-solid fa-book-open text-brand-400"></i> ${lg.name}
-                        </h4>
-                        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-mono">${lg.type}</span>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 text-xs">
-                        <!-- DEBIT SIDE -->
-                        <div class="border-r border-slate-700 pr-2 space-y-2">
-                            <div class="font-bold text-slate-400 text-[10px] uppercase border-b border-slate-800 pb-1 flex justify-between">
-                                <span>DEBIT (DR)</span>
-                            </div>
-                            <div id="lgDr_${idx}" class="space-y-1.5">
-                                <div class="flex gap-1">
-                                    <input type="text" placeholder="Details (e.g. Purchases/PDB)" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none focus:border-brand-500">
-                                    <input type="number" step="0.01" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
-                                </div>
-                            </div>
-                            <button onclick="addTAccountRow('lgDr_${idx}')" class="text-[10px] text-brand-400 hover:underline">+ Add Dr Entry</button>
-                        </div>
-
-                        <!-- CREDIT SIDE -->
-                        <div class="pl-2 space-y-2">
-                            <div class="font-bold text-slate-400 text-[10px] uppercase border-b border-slate-800 pb-1 flex justify-between">
-                                <span>CREDIT (CR)</span>
-                            </div>
-                            <div id="lgCr_${idx}" class="space-y-1.5">
-                                <div class="flex gap-1">
-                                    <input type="text" placeholder="Details (e.g. Sales/SDB)" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none focus:border-brand-500">
-                                    <input type="number" step="0.01" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
-                                </div>
-                            </div>
-                            <button onclick="addTAccountRow('lgCr_${idx}')" class="text-[10px] text-brand-400 hover:underline">+ Add Cr Entry</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function addTAccountRow(containerId) {
-            const div = document.createElement('div');
-            div.className = 'flex gap-1';
-            div.innerHTML = `
-                <input type="text" placeholder="Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none focus:border-brand-500">
-                <input type="number" step="0.01" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
-            `;
-            document.getElementById(containerId).appendChild(div);
         }
 
         function showDaybookHint() {
@@ -994,261 +847,76 @@
             document.getElementById('daybookHintBox').classList.remove('hidden');
         }
 
-        function submitDaybookAnswer() {
+        function startDaybookGame() {
             playSound('click');
-            const data = state.daybookData;
+            state.currentMode = 'daybook';
+            state.daybookStage = 1;
+            state.daybooksPassed = false;
 
-            // Helper to get rows data from daybook
-            function getDaybookEntries(tbodyId) {
-                const rows = document.querySelectorAll(`#${tbodyId} tr`);
-                return Array.from(rows).map(r => {
-                    const inputs = r.querySelectorAll('input');
-                    if (inputs.length >= 3) {
-                        return {
-                            date: inputs[0].value.trim(),
-                            party: inputs[1].value.trim(),
-                            amount: parseFloat(inputs[2].value) || 0
-                        };
-                    }
-                    return null;
-                }).filter(Boolean);
-            }
-
-            const userPdb = getDaybookEntries('pdbRows');
-            const userSdb = getDaybookEntries('sdbRows');
-            const userPrb = getDaybookEntries('prbRows');
-            const userSrb = getDaybookEntries('srbRows');
-
-            // Verification logic
-            let totalPoints = 8; // 4 daybook totals + 4 primary ledger entries
-            let earnedPoints = 0;
-
-            const checkPdb = userPdb.some(e => e.party.toLowerCase().includes(data.supplier.toLowerCase()) && Math.abs(e.amount - data.totals.PDB) < 1);
-            const checkSdb = userSdb.some(e => e.party.toLowerCase().includes(data.customer.toLowerCase()) && Math.abs(e.amount - data.totals.SDB) < 1);
-            const checkPrb = userPrb.some(e => e.party.toLowerCase().includes(data.supplier.toLowerCase()) && Math.abs(e.amount - data.totals.PRB) < 1);
-            const checkSrb = userSrb.some(e => e.party.toLowerCase().includes(data.customer.toLowerCase()) && Math.abs(e.amount - data.totals.SRB) < 1);
-
-            if (checkPdb) earnedPoints += 2;
-            if (checkSdb) earnedPoints += 2;
-            if (checkPrb) earnedPoints += 2;
-            if (checkSrb) earnedPoints += 2;
-
-            const accuracy = Math.round((earnedPoints / totalPoints) * 100);
-            const earnedXP = earnedPoints * 50;
-
-            state.xp += earnedXP;
-            if (accuracy >= 90) {
-                state.streak += 1;
-                playSound('success');
-            } else {
-                playSound('error');
-            }
-
-            // Update local leaderboard
-            state.leaderboard.unshift({
-                name: 'You (Student)',
-                mode: 'Daybook Arena',
-                accuracy: accuracy,
-                score: state.xp
-            });
-
-            // Display Evaluation Modal
-            const modal = document.getElementById('evalModal');
-            const badgeIcon = document.getElementById('evalBadgeIcon');
-            const title = document.getElementById('evalTitle');
-            const subtitle = document.getElementById('evalSubtitle');
-            const body = document.getElementById('evalBodyContent');
-
-            if (accuracy >= 90) {
-                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-                badgeIcon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
-                title.innerText = 'Outstanding Accuracy!';
-                subtitle.innerText = 'You posted all books of prime entry & ledgers correctly.';
-            } else {
-                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30';
-                badgeIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-                title.innerText = 'Good Effort - Review Answers';
-                subtitle.innerText = 'Compare your postings with the Pearson IAL Answer Key below.';
-            }
-
-            document.getElementById('evalScoreXP').innerText = `+${earnedXP} XP`;
-            document.getElementById('evalAccuracy').innerText = `Accuracy: ${accuracy}%`;
-
-            body.innerHTML = `
-                <div class="space-y-4">
-                    <h4 class="font-bold text-white text-base border-b border-slate-800 pb-2">Official Answer Key Breakdown:</h4>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                            <span class="text-xs text-brand-400 font-bold block">Purchases Day Book (PDB)</span>
-                            <div class="text-sm font-mono text-white mt-1">${data.supplier}: $${data.totals.PDB.toFixed(2)}</div>
-                            <span class="text-[10px] text-slate-400">Post Total $${data.totals.PDB.toFixed(2)} to Debit of Purchases Account</span>
-                        </div>
-
-                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                            <span class="text-xs text-emerald-400 font-bold block">Sales Day Book (SDB)</span>
-                            <div class="text-sm font-mono text-white mt-1">${data.customer}: $${data.totals.SDB.toFixed(2)}</div>
-                            <span class="text-[10px] text-slate-400">Post Total $${data.totals.SDB.toFixed(2)} to Credit of Sales Account</span>
-                        </div>
-
-                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                            <span class="text-xs text-amber-400 font-bold block">Purchases Returns Book (PRB)</span>
-                            <div class="text-sm font-mono text-white mt-1">${data.supplier}: $${data.totals.PRB.toFixed(2)}</div>
-                            <span class="text-[10px] text-slate-400">Post Total $${data.totals.PRB.toFixed(2)} to Credit of Purchases Returns</span>
-                        </div>
-
-                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                            <span class="text-xs text-rose-400 font-bold block">Sales Returns Book (SRB)</span>
-                            <div class="text-sm font-mono text-white mt-1">${data.customer}: $${data.totals.SRB.toFixed(2)}</div>
-                            <span class="text-[10px] text-slate-400">Post Total $${data.totals.SRB.toFixed(2)} to Debit of Sales Returns</span>
-                        </div>
-                    </div>
-
-                    <div class="p-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-2">
-                        <h5 class="font-bold text-xs text-slate-300">Ledger Posting Double Entry Guide:</h5>
-                        <ul class="text-xs space-y-1 text-slate-400 list-disc list-inside">
-                            <li><strong>Supplier Account (${data.supplier}):</strong> Debit $${data.totals.PRB.toFixed(2)} (Returns) & Credit $${data.totals.PDB.toFixed(2)} (Purchases).</li>
-                            <li><strong>Customer Account (${data.customer}):</strong> Debit $${data.totals.SDB.toFixed(2)} (Sales) & Credit $${data.totals.SRB.toFixed(2)} (Returns).</li>
-                        </ul>
-                    </div>
-                </div>
-            `;
-
-            modal.classList.remove('hidden');
-        }
-
-        function generateCashbookScenario() {
-            return {
-                transactions: [
-                    { id: 1, date: '04 Aug', desc: 'Owner introduced additional cash into business capital', amount: 2000, type: 'CAPITAL_CASH', target: 'CASHBOOK_DR_CASH' },
-                    { id: 2, date: '06 Aug', desc: 'Purchased delivery vehicle on credit from Auto Motors for $7,000', amount: 7000, type: 'JOURNAL_ASSET', target: 'JOURNAL' },
-                    { id: 3, date: '09 Aug', desc: 'Received cheque from City Mart Ltd for $780 in full settlement of $800 account (discount allowed $20)', amount: 780, discount: 20, type: 'CHEQUE_IN', target: 'CASHBOOK_DR_BANK' },
-                    { id: 4, date: '12 Aug', desc: 'Paid Nusantara Suppliers by cheque $1,450 in full settlement of $1,500 account (discount received $50)', amount: 1450, discount: 50, type: 'CHEQUE_OUT', target: 'CASHBOOK_CR_BANK' },
-                    { id: 5, date: '15 Aug', desc: 'Purchased new machine on credit from Tech Equip Ltd for $1,000', amount: 1000, type: 'JOURNAL_ASSET', target: 'JOURNAL' },
-                    { id: 6, date: '18 Aug', desc: 'Banked $600 of cash in hand (Contra Entry)', amount: 600, type: 'CONTRA_BANK', target: 'CASHBOOK_CONTRA_1' },
-                    { id: 7, date: '22 Aug', desc: 'Withdrew $400 cash from bank for business use (Contra Entry)', amount: 400, type: 'CONTRA_CASH', target: 'CASHBOOK_CONTRA_2' },
-                    { id: 8, date: '25 Aug', desc: 'Paid Nusantara Suppliers $500 in cash', amount: 500, type: 'CASH_OUT', target: 'CASHBOOK_CR_CASH' }
-                ]
-            };
-        }
-
-        function startCashbookGame() {
-            playSound('click');
-            state.currentMode = 'cashbook';
             document.getElementById('dashboardView').classList.add('hidden');
-            document.getElementById('cashbookGameView').classList.remove('hidden');
-            document.getElementById('cashbookRoundBadge').innerText = `Round ${state.round}`;
+            document.getElementById('daybookGameView').classList.remove('hidden');
+            document.getElementById('daybookRoundBadge').innerText = `Round ${state.round}`;
 
-            state.cashbookData = generateCashbookScenario();
-            renderCashbookTransactions();
-            initCashbookForms();
-            renderCashbookLedgers();
+            state.daybookData = generateDaybookScenario();
+            document.getElementById('myCompanyNameDisplay').innerText = state.daybookData.myCompany;
+
+            document.getElementById('checkDaybooksBtn').classList.remove('hidden');
+            document.getElementById('submitLedgersBtn').classList.add('hidden');
+            document.getElementById('daybookStageStatus').innerText = 'Stage 1';
+            document.getElementById('daybookStageStatus').className = 'text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30';
+            document.getElementById('ledgerLockIcon').className = 'fa-solid fa-lock text-slate-500';
+
+            renderSourceDocuments();
+            initDaybookForms();
+            renderDaybookLedgers();
+            switchDaybookTab('daybooks');
         }
 
-        function renderCashbookTransactions() {
-            const container = document.getElementById('cashbookTransactionsList');
-            const data = state.cashbookData;
+        function renderDaybookLedgers() {
+            const container = document.getElementById('ledgersContainer');
+            if (!container) return;
 
-            container.innerHTML = data.transactions.map(t => `
-                <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-start justify-between gap-2 hover:border-slate-700 transition">
-                    <div>
-                        <span class="text-[10px] font-extrabold text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded border border-accent-500/20 font-mono">${t.date}</span>
-                        <p class="text-slate-200 mt-1 font-medium leading-snug">${t.desc}</p>
-                    </div>
-                    <span class="font-mono font-bold text-brand-400 whitespace-nowrap">$${t.amount}</span>
-                </div>
-            `).join('');
-        }
-
-        function initCashbookForms() {
-            document.getElementById('cashbookDrRows').innerHTML = '';
-            document.getElementById('cashbookCrRows').innerHTML = '';
-            document.getElementById('journalRows').innerHTML = '';
-
-            // Add default rows
-            addCashbookDrRow();
-            addCashbookDrRow();
-            addCashbookCrRow();
-            addCashbookCrRow();
-            addJournalRow();
-        }
-
-        function addCashbookDrRow() {
-            const tbody = document.getElementById('cashbookDrRows');
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-800/40';
-            tr.innerHTML = `
-                <td class="p-1"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 font-mono outline-none"></td>
-                <td class="p-1"><input type="text" placeholder="Details / Account" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none"></td>
-                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-amber-400 font-mono outline-none"></td>
-                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-brand-400 font-mono outline-none"></td>
-                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-emerald-400 font-mono outline-none"></td>
-                <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-xmark"></i></button></td>
-            `;
-            tbody.appendChild(tr);
-        }
-
-        function addCashbookCrRow() {
-            const tbody = document.getElementById('cashbookCrRows');
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-800/40';
-            tr.innerHTML = `
-                <td class="p-1"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 font-mono outline-none"></td>
-                <td class="p-1"><input type="text" placeholder="Details / Account" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none"></td>
-                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-amber-400 font-mono outline-none"></td>
-                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-brand-400 font-mono outline-none"></td>
-                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-emerald-400 font-mono outline-none"></td>
-                <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-xmark"></i></button></td>
-            `;
-            tbody.appendChild(tr);
-        }
-
-        function addJournalRow() {
-            const tbody = document.getElementById('journalRows');
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-800/40';
-            tr.innerHTML = `
-                <td class="p-1.5"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 font-mono outline-none"></td>
-                <td class="p-1.5"><input type="text" placeholder="e.g. Delivery Vehicle / Auto Motors (Purchased asset on credit)" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 outline-none"></td>
-                <td class="p-1.5"><input type="number" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-brand-400 font-mono outline-none"></td>
-                <td class="p-1.5"><input type="number" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-accent-400 font-mono outline-none"></td>
-                <td class="p-1.5 text-center"><button onclick="this.closest('tr').remove()" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
-            `;
-            tbody.appendChild(tr);
-        }
-
-        function renderCashbookLedgers() {
-            const container = document.getElementById('cashbookLedgersContainer');
+            const data = state.daybookData;
             const ledgers = [
-                { name: 'Delivery Vehicle Account', type: 'Non-Current Asset' },
-                { name: 'Machinery Account', type: 'Non-Current Asset' },
-                { name: 'Auto Motors Account', type: 'Credit Supplier' },
-                { name: 'Tech Equip Ltd Account', type: 'Credit Supplier' }
+                { name: 'Purchases Account', type: 'General Ledger (Nominal)', debitExpected: `$${data.totals.PDB.toFixed(2)} (PDB Total)`, creditExpected: '-' },
+                { name: 'Sales Account', type: 'General Ledger (Nominal)', debitExpected: '-', creditExpected: `$${data.totals.SDB.toFixed(2)} (SDB Total)` },
+                { name: 'Purchases Returns Account', type: 'General Ledger (Nominal)', debitExpected: '-', creditExpected: `$${data.totals.PRB.toFixed(2)} (PRB Total)` },
+                { name: 'Sales Returns Account', type: 'General Ledger (Nominal)', debitExpected: `$${data.totals.SRB.toFixed(2)} (SRB Total)`, creditExpected: '-' },
+                { name: `${data.supplier} Account`, type: 'Purchases Ledger (Supplier)', debitExpected: 'Returns ($)', creditExpected: 'Purchases ($)' },
+                { name: `${data.customer} Account`, type: 'Sales Ledger (Customer)', debitExpected: 'Sales ($)', creditExpected: 'Returns ($)' }
             ];
 
             container.innerHTML = ledgers.map((lg, idx) => `
-                <div class="glass-card rounded-xl p-4 border border-slate-800 space-y-2">
+                <div class="glass-card rounded-xl p-4 border border-slate-800 space-y-3">
                     <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                        <h4 class="font-bold text-sm text-slate-100 flex items-center gap-2">
-                            <i class="fa-solid fa-book-open text-accent-400"></i> ${lg.name}
+                        <h4 class="font-bold text-sm text-white flex items-center gap-2">
+                            <i class="fa-solid fa-book-open text-brand-400"></i> ${lg.name}
                         </h4>
-                        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-mono">${lg.type}</span>
+                        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-brand-400 font-mono">${lg.type}</span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 text-xs">
-                        <div class="border-r border-slate-700 pr-2 space-y-2">
-                            <div class="font-bold text-slate-400 text-[10px] uppercase">DEBIT (DR)</div>
-                            <div class="flex gap-1">
-                                <input type="text" placeholder="Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none">
-                                <input type="number" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <!-- DEBIT SIDE -->
+                        <div class="border-r-0 md:border-r border-slate-700 md:pr-3 space-y-2">
+                            <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                                <span>DEBIT (DR)</span>
+                                <span class="text-slate-500 font-mono">Target: ${lg.debitExpected}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" placeholder="Date/Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 outline-none focus:border-brand-500">
+                                <input type="number" step="0.01" placeholder="$ Dr Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
                             </div>
                         </div>
 
-                        <div class="pl-2 space-y-2">
-                            <div class="font-bold text-slate-400 text-[10px] uppercase">CREDIT (CR)</div>
-                            <div class="flex gap-1">
-                                <input type="text" placeholder="Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none">
-                                <input type="number" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none">
+                        <!-- CREDIT SIDE -->
+                        <div class="md:pl-1 space-y-2">
+                            <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                                <span>CREDIT (CR)</span>
+                                <span class="text-slate-500 font-mono">Target: ${lg.creditExpected}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" placeholder="Date/Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 outline-none focus:border-brand-500">
+                                <input type="number" step="0.01" placeholder="$ Cr Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
                             </div>
                         </div>
                     </div>
