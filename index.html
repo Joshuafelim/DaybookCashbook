@@ -3,136 +3,193 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Accounting Master - Daybooks, Cashbook & Ledgers</title>
+  <title>Accounting Master - High Stakes Arena</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MQTT.js for Realtime Broker Connection -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- Canvas Confetti for Dopamine Wins -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
     .document-card { font-family: 'Courier New', Courier, monospace; }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.8); }
+    }
+    .glow-active { animation: pulse-glow 2s infinite; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen pb-12 font-sans antialiased">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-emerald-500 selection:text-white">
 
-  <!-- TOP HEADER & NAV -->
-  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-      <div>
-        <h1 class="text-xl font-extrabold text-emerald-400 tracking-tight">Accounting Master Trainer</h1>
-        <p class="text-xs text-slate-400">Pearson IAL Accounting Practice Engine</p>
+  <!-- ==================== WELCOME & NICKNAME SCREEN ==================== -->
+  <div id="welcomeScreen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md">
+    <div class="max-w-xl w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+      
+      <!-- Logo Header -->
+      <div class="text-center space-y-2">
+        <span class="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-full tracking-widest uppercase">
+          ⚡ Pearson IAL Accounting Engine
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          ACCOUNTING <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-amber-400">MASTER</span>
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-400">Conquer Books of Prime Entry, Cashbooks, and T-Account Ledgers. Claim your rank on the live global leaderboard!</p>
       </div>
 
-      <!-- MODE SELECTION TABS -->
-      <div class="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
-        <button id="tabMode1" onclick="switchMode(1)" class="px-4 py-2 rounded-md text-xs font-bold transition-all bg-emerald-600 text-white">
+      <!-- User Setup Form -->
+      <form onsubmit="handleEnterArena(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Player Nickname</label>
+          <div class="relative">
+            <input id="nicknameInput" type="text" maxlength="16" required placeholder="e.g. BalanceSheetKing" 
+                   class="w-full bg-slate-800 border-2 border-slate-700 focus:border-emerald-500 rounded-xl px-4 py-3 text-white placeholder-slate-500 font-semibold text-sm outline-none transition-all">
+            <span class="absolute right-3 top-3 text-slate-500 text-sm">👤</span>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-base py-3.5 px-6 rounded-xl shadow-lg shadow-emerald-500/20 transform hover:-translate-y-0.5 active:translate-y-0 transition-all">
+          ENTER ARENA & CLAIM RANK 🚀
+        </button>
+      </form>
+
+      <!-- Welcome Screen Live Leaderboard Preview -->
+      <div class="border-t border-slate-800 pt-5 space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            🏆 Global Live Standings
+          </h3>
+          <span id="mqttStatusBadgeWelcome" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-medium">Connecting MQTT...</span>
+        </div>
+
+        <div id="welcomeLeaderboardList" class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 space-y-2 max-h-48 overflow-y-auto text-xs">
+          <div class="text-center text-slate-500 py-4">Loading real-time scores...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== MAIN GAME HEADER ==================== -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+      
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center font-black text-emerald-400 text-lg">📊</div>
+        <div>
+          <h1 class="text-base font-extrabold text-white leading-none">Accounting Master Arena</h1>
+          <p id="playerGreeting" class="text-xs text-slate-400 mt-0.5">Player: <span class="font-bold text-amber-400">Guest</span></p>
+        </div>
+      </div>
+
+      <!-- Navigation Mode Tabs -->
+      <div class="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+        <button id="tabMode1" onclick="switchMode(1)" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 shadow">
           Mode 1: Daybooks & Ledgers
         </button>
-        <button id="tabMode2" onclick="switchMode(2)" class="px-4 py-2 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-white">
-          Mode 2: Cashbook, Journal & Ledgers
+        <button id="tabMode2" onclick="switchMode(2)" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white">
+          Mode 2: Cashbook & Ledgers
         </button>
       </div>
 
-      <!-- XP & STREAK BADGES -->
+      <!-- Gamification Stats Header Bar -->
       <div class="flex items-center gap-3">
+        <button onclick="toggleLeaderboardModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-200 flex items-center gap-1.5">
+          🏆 Ranks
+        </button>
         <div class="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
           <span class="text-xs font-bold text-slate-400">XP</span>
-          <span id="userXp" class="text-sm font-extrabold text-amber-400">0</span>
+          <span id="userXp" class="text-xs font-extrabold text-amber-400">0</span>
         </div>
         <div class="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-2">
           <span class="text-xs font-bold text-slate-400">Streak</span>
-          <span id="userStreak" class="text-sm font-extrabold text-emerald-400">0 🔥</span>
+          <span id="userStreak" class="text-xs font-extrabold text-emerald-400">0 🔥</span>
         </div>
       </div>
+
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 mt-6">
+  <!-- ==================== MAIN GAME CONTAINER ==================== -->
+  <main class="max-w-7xl mx-auto px-4 mt-6 pb-16">
 
-    <!-- ==================== MODE 1: DAYBOOKS & LEDGERS ==================== -->
+    <!-- MODE 1 CONTAINER -->
     <section id="mode1Container" class="space-y-6">
       
-      <!-- COMPANY BANNER -->
-      <div class="bg-indigo-950/60 border border-indigo-500/30 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-4 flex justify-between items-center">
         <div>
-          <div class="text-xs text-indigo-300 font-semibold uppercase tracking-wider">Active Organization</div>
-          <div id="companyNameDisplay" class="text-lg font-bold text-indigo-100">BRIGHT STAR TRADING</div>
+          <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Active Company</div>
+          <div id="companyNameDisplay" class="text-base font-bold text-indigo-100">BRIGHT STAR TRADING</div>
         </div>
-        <div class="text-xs text-slate-300 bg-indigo-900/50 px-3 py-1.5 rounded-md border border-indigo-700/50">
-          Role: <span class="font-bold text-white">Head Accountant</span>
+        <div class="text-xs text-slate-300 bg-indigo-900/50 px-3 py-1 rounded-md border border-indigo-700/50 font-semibold">
+          Role: Chief Accountant
         </div>
       </div>
 
-      <!-- SOURCE DOCUMENTS CONTAINER -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl">
-        <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-          Round Source Documents
+      <!-- Source Docs -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Scenario Source Documents
         </h2>
         <div id="documentsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
       </div>
 
-      <!-- STAGE 1: DAYBOOKS -->
-      <div id="daybookStage1" class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-6">
-        <h2 class="text-base font-bold text-slate-200 border-b border-slate-800 pb-3">Stage 1: Record Entries into Books of Prime Entry</h2>
+      <!-- Daybook Inputs -->
+      <div id="daybookStage1" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-6">
+        <h2 class="text-sm font-bold text-slate-200 border-b border-slate-800 pb-3">Stage 1: Daybooks Entry</h2>
 
-        <!-- Purchases Day Book -->
+        <!-- Purchases Daybook -->
         <div class="space-y-2">
           <div class="flex justify-between items-center">
-            <h3 class="text-sm font-bold text-emerald-400">Purchases Day Book (PDB)</h3>
-            <button onclick="addDaybookRow('pdbTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded border border-slate-700 text-slate-200">+ Add Row</button>
+            <h3 class="text-xs font-bold text-emerald-400">Purchases Day Book (PDB)</h3>
+            <button onclick="addDaybookRow('pdbTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Row</button>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left text-slate-300">
-              <thead class="bg-slate-800 text-slate-400 uppercase">
-                <tr><th class="p-2">Date</th><th class="p-2">Supplier Name</th><th class="p-2">Inv No.</th><th class="p-2 text-right">Net Amount ($)</th><th class="p-2 text-center">Action</th></tr>
-              </thead>
-              <tbody id="pdbTable" class="divide-y divide-slate-800"></tbody>
-            </table>
-          </div>
+          <table class="w-full text-xs text-slate-300">
+            <thead class="bg-slate-800 text-slate-400 uppercase">
+              <tr><th class="p-2 text-left">Date</th><th class="p-2 text-left">Supplier</th><th class="p-2 text-left">Inv #</th><th class="p-2 text-right">Net ($)</th><th></th></tr>
+            </thead>
+            <tbody id="pdbTable" class="divide-y divide-slate-800"></tbody>
+          </table>
         </div>
 
-        <!-- Sales Day Book -->
+        <!-- Sales Daybook -->
         <div class="space-y-2">
           <div class="flex justify-between items-center">
-            <h3 class="text-sm font-bold text-emerald-400">Sales Day Book (SDB)</h3>
-            <button onclick="addDaybookRow('sdbTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded border border-slate-700 text-slate-200">+ Add Row</button>
+            <h3 class="text-xs font-bold text-emerald-400">Sales Day Book (SDB)</h3>
+            <button onclick="addDaybookRow('sdbTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Row</button>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left text-slate-300">
-              <thead class="bg-slate-800 text-slate-400 uppercase">
-                <tr><th class="p-2">Date</th><th class="p-2">Customer Name</th><th class="p-2">Inv No.</th><th class="p-2 text-right">Net Amount ($)</th><th class="p-2 text-center">Action</th></tr>
-              </thead>
-              <tbody id="sdbTable" class="divide-y divide-slate-800"></tbody>
-            </table>
-          </div>
+          <table class="w-full text-xs text-slate-300">
+            <thead class="bg-slate-800 text-slate-400 uppercase">
+              <tr><th class="p-2 text-left">Date</th><th class="p-2 text-left">Customer</th><th class="p-2 text-left">Inv #</th><th class="p-2 text-right">Net ($)</th><th></th></tr>
+            </thead>
+            <tbody id="sdbTable" class="divide-y divide-slate-800"></tbody>
+          </table>
         </div>
 
-        <!-- Purchases Returns Day Book -->
-        <div class="space-y-2">
-          <div class="flex justify-between items-center">
-            <h3 class="text-sm font-bold text-rose-400">Purchases Returns Day Book (PRB)</h3>
-            <button onclick="addDaybookRow('prbTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded border border-slate-700 text-slate-200">+ Add Row</button>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left text-slate-300">
-              <thead class="bg-slate-800 text-slate-400 uppercase">
-                <tr><th class="p-2">Date</th><th class="p-2">Supplier Name</th><th class="p-2">Credit Note No.</th><th class="p-2 text-right">Net Amount ($)</th><th class="p-2 text-center">Action</th></tr>
+        <!-- Returns Daybooks -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <h3 class="text-xs font-bold text-rose-400">Purchases Returns Day Book</h3>
+              <button onclick="addDaybookRow('prbTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Row</button>
+            </div>
+            <table class="w-full text-xs text-slate-300">
+              <thead class="bg-slate-800 text-slate-400">
+                <tr><th class="p-1.5 text-left">Date</th><th class="p-1.5 text-left">Supplier</th><th class="p-1.5 text-right">Net ($)</th><th></th></tr>
               </thead>
               <tbody id="prbTable" class="divide-y divide-slate-800"></tbody>
             </table>
           </div>
-        </div>
 
-        <!-- Sales Returns Day Book -->
-        <div class="space-y-2">
-          <div class="flex justify-between items-center">
-            <h3 class="text-sm font-bold text-rose-400">Sales Returns Day Book (SRB)</h3>
-            <button onclick="addDaybookRow('srbTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded border border-slate-700 text-slate-200">+ Add Row</button>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left text-slate-300">
-              <thead class="bg-slate-800 text-slate-400 uppercase">
-                <tr><th class="p-2">Date</th><th class="p-2">Customer Name</th><th class="p-2">Credit Note No.</th><th class="p-2 text-right">Net Amount ($)</th><th class="p-2 text-center">Action</th></tr>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <h3 class="text-xs font-bold text-rose-400">Sales Returns Day Book</h3>
+              <button onclick="addDaybookRow('srbTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Row</button>
+            </div>
+            <table class="w-full text-xs text-slate-300">
+              <thead class="bg-slate-800 text-slate-400">
+                <tr><th class="p-1.5 text-left">Date</th><th class="p-1.5 text-left">Customer</th><th class="p-1.5 text-right">Net ($)</th><th></th></tr>
               </thead>
               <tbody id="srbTable" class="divide-y divide-slate-800"></tbody>
             </table>
@@ -140,111 +197,106 @@
         </div>
 
         <div class="flex justify-end pt-4">
-          <button id="stage1DaybookBtn" onclick="checkDaybooksStage1()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow-lg transition-all">
+          <button id="stage1DaybookBtn" onclick="checkDaybooksStage1()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs shadow-lg">
             1. Check Daybooks & Unlock Ledgers 🔓
           </button>
         </div>
       </div>
 
-      <!-- STAGE 2: DAYBOOK LEDGER T-ACCOUNTS -->
-      <div id="daybookLedgerSection" class="hidden bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-6">
+      <!-- Stage 2 Ledgers Mode 1 -->
+      <div id="daybookLedgerSection" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-6">
         <div>
-          <h2 class="text-base font-bold text-amber-400">Stage 2: Post Daybook Entries into Ledger T-Accounts</h2>
-          <p class="text-xs text-slate-400 mt-1">Post individual transactions into Trade Payables & Receivables, and total transfers into Purchases, Sales, and Returns accounts.</p>
+          <h2 class="text-base font-bold text-amber-400">Stage 2: Post Entries to T-Account Ledgers</h2>
+          <p class="text-xs text-slate-400">Post supplier/customer transactions and periodic totals to respective debit and credit T-accounts.</p>
         </div>
 
         <div id="daybookLedgerContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
 
         <div class="flex justify-end pt-4">
-          <button id="stage2DaybookSubmitBtn" onclick="evaluateDaybookAndLedgers()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-8 rounded-lg text-sm shadow-lg transition-all">
-            2. Submit Complete Round for Evaluation 🚀
+          <button id="stage2DaybookSubmitBtn" onclick="evaluateDaybookAndLedgers()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 px-8 rounded-xl text-sm shadow-xl">
+            2. Submit Round for Final Score 🚀
           </button>
         </div>
       </div>
 
     </section>
 
-    <!-- ==================== MODE 2: CASHBOOK, JOURNAL & LEDGERS ==================== -->
+    <!-- MODE 2 CONTAINER -->
     <section id="mode2Container" class="hidden space-y-6">
       
-      <!-- TRANSACTION SCENARIO LIST -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl">
-        <h2 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-3">August Transactions Scenario</h2>
+      <!-- Scenario Box -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+        <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider">August Transactions Log</h2>
         <div id="cashbookTransactionsList" class="space-y-2 text-xs text-slate-300"></div>
       </div>
 
-      <!-- STAGE 1: CASHBOOK & GENERAL JOURNAL inputs -->
-      <div id="cashbookStage1Container" class="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-6">
-        <h2 class="text-base font-bold text-slate-200 border-b border-slate-800 pb-3">Stage 1: Enter Cashbook & General Journal Entries</h2>
+      <!-- Stage 1 Inputs Mode 2 -->
+      <div id="cashbookStage1Container" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-6">
+        <h2 class="text-sm font-bold text-slate-200 border-b border-slate-800 pb-3">Stage 1: Triple-Column Cashbook & Journal</h2>
 
-        <!-- Triple-Column Cashbook -->
-        <div class="space-y-4">
-          <h3 class="text-sm font-bold text-emerald-400">Triple-Column Cash Book</h3>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Debit Side -->
-            <div>
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-xs font-bold text-emerald-400">Debit (Receipts)</span>
-                <button onclick="addCashbookRow('cbDrTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Row</button>
-              </div>
-              <table class="w-full text-xs text-slate-300">
-                <thead class="bg-slate-800 text-slate-400">
-                  <tr><th class="p-1">Date</th><th class="p-1">Details</th><th class="p-1">Disc ($)</th><th class="p-1">Cash ($)</th><th class="p-1">Bank ($)</th><th></th></tr>
-                </thead>
-                <tbody id="cbDrTable" class="divide-y divide-slate-800"></tbody>
-              </table>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Receipts -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-emerald-400">Debit (Receipts)</span>
+              <button onclick="addCashbookRow('cbDrTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Row</button>
             </div>
+            <table class="w-full text-xs text-slate-300">
+              <thead class="bg-slate-800 text-slate-400">
+                <tr><th class="p-1">Date</th><th class="p-1">Details</th><th class="p-1">Disc</th><th class="p-1">Cash</th><th class="p-1">Bank</th><th></th></tr>
+              </thead>
+              <tbody id="cbDrTable" class="divide-y divide-slate-800"></tbody>
+            </table>
+          </div>
 
-            <!-- Credit Side -->
-            <div>
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-xs font-bold text-rose-400">Credit (Payments)</span>
-                <button onclick="addCashbookRow('cbCrTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Row</button>
-              </div>
-              <table class="w-full text-xs text-slate-300">
-                <thead class="bg-slate-800 text-slate-400">
-                  <tr><th class="p-1">Date</th><th class="p-1">Details</th><th class="p-1">Disc ($)</th><th class="p-1">Cash ($)</th><th class="p-1">Bank ($)</th><th></th></tr>
-                </thead>
-                <tbody id="cbCrTable" class="divide-y divide-slate-800"></tbody>
-              </table>
+          <!-- Payments -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-rose-400">Credit (Payments)</span>
+              <button onclick="addCashbookRow('cbCrTable')" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Row</button>
             </div>
+            <table class="w-full text-xs text-slate-300">
+              <thead class="bg-slate-800 text-slate-400">
+                <tr><th class="p-1">Date</th><th class="p-1">Details</th><th class="p-1">Disc</th><th class="p-1">Cash</th><th class="p-1">Bank</th><th></th></tr>
+              </thead>
+              <tbody id="cbCrTable" class="divide-y divide-slate-800"></tbody>
+            </table>
           </div>
         </div>
 
-        <!-- General Journal -->
+        <!-- Journal -->
         <div class="space-y-2 pt-4 border-t border-slate-800">
           <div class="flex justify-between items-center">
-            <h3 class="text-sm font-bold text-indigo-400">General Journal (Non-Current Assets / Credit Adjustments)</h3>
-            <button onclick="addJournalRow()" class="text-xs bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-slate-200">+ Add Journal Entry</button>
+            <h3 class="text-xs font-bold text-indigo-400">General Journal</h3>
+            <button onclick="addJournalRow()" class="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-200">+ Add Journal Entry</button>
           </div>
           <table class="w-full text-xs text-slate-300">
             <thead class="bg-slate-800 text-slate-400">
-              <tr><th class="p-2">Date</th><th class="p-2">Account Title & Details</th><th class="p-2 text-right">Debit ($)</th><th class="p-2 text-right">Credit ($)</th><th></th></tr>
+              <tr><th class="p-2">Date</th><th class="p-2">Account Title</th><th class="p-2 text-right">Debit ($)</th><th class="p-2 text-right">Credit ($)</th><th></th></tr>
             </thead>
             <tbody id="journalTable" class="divide-y divide-slate-800"></tbody>
           </table>
         </div>
 
         <div class="flex justify-end pt-4">
-          <button id="stage1CashbookBtn" onclick="checkCashbookStage1()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow-lg transition-all">
+          <button id="stage1CashbookBtn" onclick="checkCashbookStage1()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs shadow-lg">
             1. Check Cashbook & Unlock Ledgers 🔓
           </button>
         </div>
       </div>
 
-      <!-- STAGE 2: CASHBOOK LEDGER T-ACCOUNTS -->
-      <div id="cashbookLedgerSection" class="hidden bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-xl space-y-6">
+      <!-- Stage 2 Ledgers Mode 2 -->
+      <div id="cashbookLedgerSection" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-6">
         <div>
-          <h2 class="text-base font-bold text-amber-400">Stage 2: Post Cashbook & Journal Entries to T-Account Ledgers</h2>
-          <p class="text-xs text-slate-400 mt-1">Post all cash/bank receipts, payments, discounts allowed/received, and general journal items into their respective ledger accounts.</p>
+          <h2 class="text-base font-bold text-amber-400">Stage 2: Post Cashbook & Journal to T-Accounts</h2>
+          <p class="text-xs text-slate-400">Post settlements, discount totals, and general journal items into respective ledgers.</p>
         </div>
 
         <div id="cashbookLedgerContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
 
         <div class="flex justify-end pt-4">
-          <button id="stage2CashbookSubmitBtn" onclick="evaluateCashbookAndLedgers()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-8 rounded-lg text-sm shadow-lg transition-all">
-            2. Submit Cashbook & Ledgers for Evaluation 🚀
+          <button id="stage2CashbookSubmitBtn" onclick="evaluateCashbookAndLedgers()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 px-8 rounded-xl text-sm shadow-xl">
+            2. Submit Mode 2 for Evaluation 🚀
           </button>
         </div>
       </div>
@@ -253,85 +305,218 @@
 
   </main>
 
-  <!-- EVALUATION MODAL -->
-  <div id="evalModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+  <!-- ==================== REALTIME LEADERBOARD MODAL ==================== -->
+  <div id="leaderboardModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden">
+    <div class="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 class="text-lg font-bold text-white flex items-center gap-2">
-          <span class="text-emerald-400">🏆</span> Evaluation Results
-        </h3>
-        <span id="evalAccuracy" class="text-sm font-extrabold px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30">100% Accuracy</span>
-      </div>
-
-      <div class="space-y-3 text-xs">
-        <div class="flex justify-between items-center bg-slate-800/60 p-3 rounded-lg">
-          <span class="text-slate-300">XP Earned:</span>
-          <span id="evalXp" class="font-bold text-amber-400 text-sm">+0 XP</span>
+        <div>
+          <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+            <span>🏆</span> Global Arena Leaderboard
+          </h3>
+          <p class="text-[10px] text-slate-400">Synchronized via MQTT WebSocket Server</p>
         </div>
-        <div id="evalBreakdown" class="space-y-2 text-slate-300"></div>
+        <button onclick="toggleLeaderboardModal()" class="text-slate-400 hover:text-white font-bold text-lg">×</button>
       </div>
 
-      <div class="flex justify-end gap-3 pt-2">
-        <button onclick="closeEvalModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 px-4 rounded-lg">Review Entries</button>
-        <button onclick="nextRound()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-6 rounded-lg shadow-lg">Next Round ➔</button>
+      <div id="modalLeaderboardList" class="space-y-2 max-h-80 overflow-y-auto text-xs">
+        <div class="text-center text-slate-500 py-6">Connecting to MQTT Broker...</div>
       </div>
     </div>
   </div>
 
+  <!-- ==================== EVALUATION RESULTS MODAL ==================== -->
+  <div id="evalModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+      
+      <div class="text-center space-y-2">
+        <div id="evalBadge" class="text-4xl animate-bounce">🎯</div>
+        <h3 id="evalTitle" class="text-xl font-black text-white">Round Completed!</h3>
+        <span id="evalAccuracy" class="inline-block text-xs font-black px-4 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/40">100% Accuracy</span>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3 text-xs">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span class="text-slate-400">XP Gained</span>
+          <span id="evalXp" class="font-extrabold text-amber-400 text-sm">+0 XP</span>
+        </div>
+        <div id="evalBreakdown" class="space-y-1.5 text-slate-300"></div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button onclick="closeEvalModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 px-4 rounded-xl">Review Entries</button>
+        <button onclick="nextRound()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black py-2.5 px-6 rounded-xl shadow-lg">Next Round ➔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SCRIPT ENGINE ==================== -->
   <script>
-    // Global App State
+    // Audio Synthesizer for Retro Gamification SFX
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSfx(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'click') {
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+      } else if (type === 'success') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.35);
+      } else if (type === 'unlock') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+      }
+    }
+
+    // App State
+    let player = { nickname: 'Guest', xp: 0, streak: 0 };
     let currentMode = 1;
-    let xp = 0;
-    let streak = 0;
     let currentRoundDocs = [];
     let currentCashbookScenario = null;
+    let globalLeaderboard = [];
 
-    const COMPANY_NAME = "BRIGHT STAR TRADING";
-    const COMPANY_ADDRESS = "12 Merdeka Street, Jakarta 10110";
+    // MQTT Configuration
+    const MQTT_BROKER = 'wss://broker.hivemq.com:8000/mqtt';
+    const MQTT_TOPIC = 'accounting_master_game_v2/scores';
+    let mqttClient = null;
 
-    const SUPPLIERS = [
-      { name: "NUSANTARA SUPPLIERS", address: "77 Industrial Estate, Bekasi" },
-      { name: "GLOBAL PAPER CO.", address: "9 Paper Mill Road, Tangerang" },
-      { name: "STATIONERY WORLD", address: "55 Commerce Plaza, Jakarta" }
-    ];
-
-    const CUSTOMERS = [
-      { name: "Green Valley Stores", address: "45 Orchard Road, Bandung" },
-      { name: "City Mart Ltd", address: "88 High Street, Surabaya" },
-      { name: "Sunrise Bookshop", address: "3 Library Lane, Yogyakarta" },
-      { name: "Pacific Office Supplies", address: "22 Harbour Road, Medan" }
-    ];
-
-    const ITEMS = [
-      { desc: "Office chairs (Model A)", buyPrice: 55, sellPrice: 85 },
-      { desc: "Desk lamps", buyPrice: 14, sellPrice: 22.5 },
-      { desc: "Filing cabinets", buyPrice: 95, sellPrice: 160 },
-      { desc: "Printer paper (reams)", buyPrice: 3.2, sellPrice: 4.8 },
-      { desc: "Staplers", buyPrice: 3.8, sellPrice: 6.5 },
-      { desc: "Whiteboard markers (boxes)", buyPrice: 4.5, sellPrice: 8.0 }
-    ];
-
-    // Initialization
     window.addEventListener('DOMContentLoaded', () => {
+      initMqtt();
       initRound();
     });
 
+    // MQTT Realtime Leaderboard Logic
+    function initMqtt() {
+      try {
+        mqttClient = mqtt.connect(MQTT_BROKER);
+        
+        mqttClient.on('connect', () => {
+          document.getElementById('mqttStatusBadgeWelcome').innerText = '🟢 Live MQTT Connected';
+          document.getElementById('mqttStatusBadgeWelcome').className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium';
+          mqttClient.subscribe(MQTT_TOPIC);
+        });
+
+        mqttClient.on('message', (topic, message) => {
+          try {
+            const data = JSON.parse(message.toString());
+            updateLeaderboardData(data);
+          } catch(e) {}
+        });
+
+        mqttClient.on('error', () => {
+          document.getElementById('mqttStatusBadgeWelcome').innerText = '🟡 Local Mode';
+        });
+      } catch(e) {
+        document.getElementById('mqttStatusBadgeWelcome').innerText = '🟡 Local Mode';
+      }
+    }
+
+    function publishScore() {
+      if (!player.nickname || player.nickname === 'Guest') return;
+      const payload = {
+        nickname: player.nickname,
+        xp: player.xp,
+        streak: player.streak,
+        timestamp: Date.now()
+      };
+      
+      // Update local state immediately
+      updateLeaderboardData(payload);
+
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(MQTT_TOPIC, JSON.stringify(payload), { retain: true });
+      }
+    }
+
+    function updateLeaderboardData(entry) {
+      const idx = globalLeaderboard.findIndex(p => p.nickname === entry.nickname);
+      if (idx >= 0) {
+        if (entry.xp > globalLeaderboard[idx].xp) {
+          globalLeaderboard[idx] = entry;
+        }
+      } else {
+        globalLeaderboard.push(entry);
+      }
+      globalLeaderboard.sort((a, b) => b.xp - a.xp);
+      renderLeaderboards();
+    }
+
+    function renderLeaderboards() {
+      const render = (containerId) => {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        if (globalLeaderboard.length === 0) {
+          el.innerHTML = `<div class="text-center text-slate-500 py-3">No scores recorded yet. Be the first!</div>`;
+          return;
+        }
+        el.innerHTML = globalLeaderboard.slice(0, 10).map((p, i) => `
+          <div class="flex justify-between items-center p-2 rounded-lg ${p.nickname === player.nickname ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-slate-900 border border-slate-800'}">
+            <div class="flex items-center gap-2">
+              <span class="font-black text-xs ${i===0?'text-amber-400':i===1?'text-slate-300':i===2?'text-amber-600':'text-slate-500'}">#${i+1}</span>
+              <span class="font-bold text-slate-200">${p.nickname}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-emerald-400 font-extrabold">${p.xp} XP</span>
+              <span class="text-slate-400 text-[10px]">${p.streak}🔥</span>
+            </div>
+          </div>
+        `).join('');
+      };
+
+      render('welcomeLeaderboardList');
+      render('modalLeaderboardList');
+    }
+
+    function handleEnterArena(e) {
+      e.preventDefault();
+      playSfx('click');
+      const name = document.getElementById('nicknameInput').value.trim();
+      if (name) {
+        player.nickname = name;
+        document.getElementById('playerGreeting').innerHTML = `Player: <span class="font-bold text-amber-400">${name}</span>`;
+        document.getElementById('welcomeScreen').classList.add('hidden');
+        publishScore();
+      }
+    }
+
+    function toggleLeaderboardModal() {
+      playSfx('click');
+      document.getElementById('leaderboardModal').classList.toggle('hidden');
+    }
+
     function switchMode(mode) {
+      playSfx('click');
       currentMode = mode;
-      document.getElementById('tabMode1').className = mode === 1 
-        ? "px-4 py-2 rounded-md text-xs font-bold transition-all bg-emerald-600 text-white"
-        : "px-4 py-2 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-white";
-      document.getElementById('tabMode2').className = mode === 2 
-        ? "px-4 py-2 rounded-md text-xs font-bold transition-all bg-emerald-600 text-white"
-        : "px-4 py-2 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-white";
+      document.getElementById('tabMode1').className = mode === 1 ? "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 shadow" : "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white";
+      document.getElementById('tabMode2').className = mode === 2 ? "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 shadow" : "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-white";
 
       document.getElementById('mode1Container').classList.toggle('hidden', mode !== 1);
       document.getElementById('mode2Container').classList.toggle('hidden', mode !== 2);
 
-      if (mode === 2 && !currentCashbookScenario) {
-        initCashbookScenario();
-      }
+      if (mode === 2 && !currentCashbookScenario) initCashbookScenario();
     }
+
+    // --- DAYBOOK GENERATION LOGIC ---
+    const COMPANY_NAME = "BRIGHT STAR TRADING";
+    const COMPANY_ADDRESS = "12 Merdeka Street, Jakarta";
+    const SUPPLIERS = [{ name: "NUSANTARA SUPPLIERS" }, { name: "GLOBAL PAPER CO." }];
+    const CUSTOMERS = [{ name: "Green Valley Stores" }, { name: "City Mart Ltd" }];
+    const ITEMS = [
+      { desc: "Office chairs", buyPrice: 50, sellPrice: 80 },
+      { desc: "Desk lamps", buyPrice: 15, sellPrice: 25 }
+    ];
 
     function initRound() {
       generateDaybookScenario();
@@ -339,140 +524,71 @@
       resetDaybookTables();
     }
 
-    // --- DAYBOOK SCENARIO GENERATOR ---
     function generateDaybookScenario() {
       currentRoundDocs = [];
-      const docCount = Math.floor(Math.random() * 2) + 4; // 4 to 5 docs
       const types = ['PI', 'SI', 'PR', 'SR'];
-
-      for (let i = 0; i < docCount; i++) {
-        // Randomize document type completely
-        const type = types[Math.floor(Math.random() * types.length)];
+      for (let i = 0; i < 4; i++) {
+        const type = types[i];
         const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
-        const qty = Math.floor(Math.random() * 15) + 5;
-        const discountRate = Math.random() > 0.5 ? (Math.floor(Math.random() * 3) + 1) * 5 : 0; // 0%, 5%, 10%, 15%
-        const date = `${Math.floor(Math.random() * 25) + 1} August 2026`;
+        const qty = Math.floor(Math.random() * 10) + 5;
+        const discountRate = 10;
+        const gross = qty * (type === 'PI' || type === 'PR' ? item.buyPrice : item.sellPrice);
+        const netAmount = gross * 0.9;
 
-        let doc = { id: i + 1, type, date, item, qty, discountRate };
-
-        if (type === 'PI' || type === 'PR') {
-          const supp = SUPPLIERS[Math.floor(Math.random() * SUPPLIERS.length)];
-          doc.partyName = supp.name;
-          doc.partyAddr = supp.address;
-          doc.docNo = type === 'PI' ? `PI-${Math.floor(Math.random()*8000)+1000}` : `CN-P${Math.floor(Math.random()*800)+100}`;
-          doc.unitPrice = item.buyPrice;
-        } else {
-          const cust = CUSTOMERS[Math.floor(Math.random() * CUSTOMERS.length)];
-          doc.partyName = cust.name;
-          doc.partyAddr = cust.address;
-          doc.docNo = type === 'SI' ? `SI-${Math.floor(Math.random()*8000)+1000}` : `CN-S${Math.floor(Math.random()*800)+100}`;
-          doc.unitPrice = item.sellPrice;
-        }
-
-        const gross = doc.qty * doc.unitPrice;
-        const discountVal = gross * (doc.discountRate / 100);
-        doc.netAmount = Math.round((gross - discountVal) * 100) / 100;
-
-        currentRoundDocs.push(doc);
+        currentRoundDocs.push({
+          id: i + 1, type, date: `${i + 2} Aug 2026`,
+          partyName: (type === 'PI' || type === 'PR') ? SUPPLIERS[0].name : CUSTOMERS[0].name,
+          docNo: `${type}-${1000 + i}`,
+          item, qty, unitPrice: type === 'PI' || type === 'PR' ? item.buyPrice : item.sellPrice,
+          discountRate, netAmount
+        });
       }
-
       renderSourceDocuments();
     }
 
     function renderSourceDocuments() {
       const container = document.getElementById('documentsContainer');
       container.innerHTML = '';
-
       currentRoundDocs.forEach(doc => {
         const isSales = doc.type === 'SI' || doc.type === 'SR';
-        const isReturn = doc.type === 'PR' || doc.type === 'SR';
-
-        const sellerName = isSales ? COMPANY_NAME : doc.partyName;
-        const sellerAddr = isSales ? COMPANY_ADDRESS : doc.partyAddr;
-        const buyerName = isSales ? doc.partyName : COMPANY_NAME;
-        const buyerAddr = isSales ? doc.partyAddr : COMPANY_ADDRESS;
-
-        const docTitle = isReturn ? "CREDIT NOTE" : "INVOICE";
-        const gross = (doc.qty * doc.unitPrice).toFixed(2);
-        const discountAmount = (gross * (doc.discountRate / 100)).toFixed(2);
-
         const card = document.createElement('div');
-        card.className = "document-card bg-amber-50 text-slate-900 rounded-lg p-4 border border-amber-200 text-xs shadow-md space-y-3";
+        card.className = "document-card bg-amber-50 text-slate-900 rounded-xl p-3 text-xs border border-amber-200 shadow space-y-1.5";
         card.innerHTML = `
-          <div class="flex justify-between items-start border-b border-slate-300 pb-2">
-            <div>
-              <div class="font-bold text-sm text-slate-900">${sellerName}</div>
-              <div class="text-[10px] text-slate-600">${sellerAddr}</div>
-            </div>
-            <div class="text-right">
-              <span class="inline-block px-2 py-0.5 font-bold text-[10px] rounded ${isReturn ? 'bg-rose-200 text-rose-800' : 'bg-emerald-200 text-emerald-800'}">${docTitle}</span>
-              <div class="text-[10px] font-bold mt-1">No: ${doc.docNo}</div>
-              <div class="text-[10px]">Date: ${doc.date}</div>
-            </div>
+          <div class="flex justify-between font-bold border-b pb-1">
+            <span>${isSales ? COMPANY_NAME : doc.partyName}</span>
+            <span class="text-emerald-700">${doc.type} (${doc.docNo})</span>
           </div>
-
-          <div class="text-[11px]">
-            <span class="text-slate-500 font-semibold">${isSales ? 'Customer:' : 'Sold to:'}</span>
-            <span class="font-bold text-slate-800">${buyerName}</span> (${buyerAddr})
-          </div>
-
-          <table class="w-full text-left text-[11px] border-collapse">
-            <thead>
-              <tr class="border-b border-slate-300 text-slate-600">
-                <th class="py-1">Description</th>
-                <th class="py-1 text-center">Qty</th>
-                <th class="py-1 text-right">Unit $</th>
-                <th class="py-1 text-right">Amount $</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="py-1 font-semibold">${doc.item.desc} ${isReturn ? '(Returned)' : ''}</td>
-                <td class="py-1 text-center">${doc.qty}</td>
-                <td class="py-1 text-right">${doc.unitPrice.toFixed(2)}</td>
-                <td class="py-1 text-right">${gross}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="border-t border-slate-300 pt-2 text-right space-y-0.5 text-[11px]">
-            ${doc.discountRate > 0 ? `
-              <div class="text-slate-600">Subtotal: $${gross}</div>
-              <div class="text-slate-600">Trade Discount (${doc.discountRate}%): -$${discountAmount}</div>
-            ` : ''}
-            <div class="font-bold text-sm text-slate-900">TOTAL NET: $${doc.netAmount.toFixed(2)}</div>
-          </div>
+          <div>To: ${isSales ? doc.partyName : COMPANY_NAME} | Date: ${doc.date}</div>
+          <div>Item: ${doc.qty}x ${doc.item.desc} @ $${doc.unitPrice} (Disc: ${doc.discountRate}%)</div>
+          <div class="text-right font-black text-sm">Net Total: $${doc.netAmount.toFixed(2)}</div>
         `;
         container.appendChild(card);
       });
     }
 
-    // --- DAYBOOK Dynamic Rows ---
     function resetDaybookTables() {
       ['pdbTable', 'sdbTable', 'prbTable', 'srbTable'].forEach(id => {
         document.getElementById(id).innerHTML = '';
         addDaybookRow(id);
       });
-
       document.getElementById('daybookLedgerSection').classList.add('hidden');
       document.getElementById('stage1DaybookBtn').classList.remove('hidden');
     }
 
     function addDaybookRow(tableId) {
-      const tbody = document.getElementById(tableId);
       const tr = document.createElement('tr');
-      tr.className = "db-row";
       tr.innerHTML = `
         <td class="p-1"><input type="text" placeholder="Date" class="db-date w-full bg-slate-800 border border-slate-700 rounded p-1 text-slate-200"></td>
         <td class="p-1"><input type="text" placeholder="Name" class="db-name w-full bg-slate-800 border border-slate-700 rounded p-1 text-slate-200"></td>
-        <td class="p-1"><input type="text" placeholder="Doc No" class="db-doc w-full bg-slate-800 border border-slate-700 rounded p-1 text-slate-200"></td>
+        <td class="p-1"><input type="text" placeholder="Doc #" class="db-doc w-full bg-slate-800 border border-slate-700 rounded p-1 text-slate-200"></td>
         <td class="p-1"><input type="number" step="0.01" placeholder="0.00" class="db-amount w-full bg-slate-800 border border-slate-700 rounded p-1 text-right text-slate-200"></td>
-        <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-rose-400 hover:text-rose-300 font-bold">×</button></td>
+        <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-rose-400 font-bold">×</button></td>
       `;
-      tbody.appendChild(tr);
+      document.getElementById(tableId).appendChild(tr);
     }
 
     function checkDaybooksStage1() {
+      playSfx('unlock');
       document.getElementById('daybookLedgerSection').classList.remove('hidden');
       document.getElementById('stage1DaybookBtn').classList.add('hidden');
       renderDaybookLedgers();
@@ -482,37 +598,33 @@
     function renderDaybookLedgers() {
       const container = document.getElementById('daybookLedgerContainer');
       container.innerHTML = '';
-
-      const parties = new Set(currentRoundDocs.map(d => d.partyName));
       const accounts = [
-        ...Array.from(parties).map(p => ({ name: p, type: 'Party' })),
-        { name: 'Purchases Account', type: 'Nominal' },
-        { name: 'Sales Account', type: 'Nominal' },
-        { name: 'Purchases Returns Account', type: 'Nominal' },
-        { name: 'Sales Returns Account', type: 'Nominal' }
+        { name: 'Nusantara Suppliers Account' },
+        { name: 'Green Valley Stores Account' },
+        { name: 'Purchases Account' },
+        { name: 'Sales Account' }
       ];
 
       accounts.forEach(acc => {
-        const card = document.createElement('div');
-        card.className = "p-4 bg-slate-900/80 rounded-xl border border-slate-700/80 shadow-lg space-y-3";
         const accId = acc.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-        card.innerHTML = `
-          <div class="text-center font-bold text-slate-200 border-b border-slate-700 pb-2 text-xs uppercase tracking-wide">${acc.name}</div>
-          <div class="grid grid-cols-2 gap-3 text-xs">
+        const div = document.createElement('div');
+        div.className = "p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2";
+        div.innerHTML = `
+          <div class="text-center font-bold text-slate-200 text-xs border-b border-slate-800 pb-1">${acc.name}</div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <div class="font-semibold text-emerald-400 mb-1">Dr (Debit)</div>
-              <div id="db-dr-${accId}" class="space-y-1.5"></div>
-              <button onclick="addLedgerRow('db-dr-${accId}')" class="mt-2 text-[10px] text-emerald-400 hover:underline">+ Add Dr Row</button>
+              <div class="font-bold text-emerald-400">Dr</div>
+              <div id="db-dr-${accId}" class="space-y-1"></div>
+              <button onclick="addLedgerRow('db-dr-${accId}')" class="text-[10px] text-emerald-400 hover:underline">+ Add Row</button>
             </div>
             <div>
-              <div class="font-semibold text-rose-400 mb-1">Cr (Credit)</div>
-              <div id="db-cr-${accId}" class="space-y-1.5"></div>
-              <button onclick="addLedgerRow('db-cr-${accId}')" class="mt-2 text-[10px] text-rose-400 hover:underline">+ Add Cr Row</button>
+              <div class="font-bold text-rose-400">Cr</div>
+              <div id="db-cr-${accId}" class="space-y-1"></div>
+              <button onclick="addLedgerRow('db-cr-${accId}')" class="text-[10px] text-rose-400 hover:underline">+ Add Row</button>
             </div>
           </div>
         `;
-        container.appendChild(card);
+        container.appendChild(div);
         addLedgerRow(`db-dr-${accId}`);
         addLedgerRow(`db-cr-${accId}`);
       });
@@ -522,230 +634,155 @@
       const parent = document.getElementById(containerId);
       if (!parent) return;
       const row = document.createElement('div');
-      row.className = "grid grid-cols-3 gap-1 ledger-row";
+      row.className = "grid grid-cols-3 gap-1";
       row.innerHTML = `
-        <input type="text" placeholder="Date" class="ld-date bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-slate-200">
-        <input type="text" placeholder="Details" class="ld-details bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-slate-200">
-        <input type="number" step="0.01" placeholder="Amount" class="ld-amount bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-right text-slate-200">
+        <input type="text" placeholder="Date" class="bg-slate-800 border border-slate-700 rounded p-0.5 text-[10px] text-slate-200">
+        <input type="text" placeholder="Details" class="bg-slate-800 border border-slate-700 rounded p-0.5 text-[10px] text-slate-200">
+        <input type="number" step="0.01" placeholder="Amount" class="bg-slate-800 border border-slate-700 rounded p-0.5 text-[10px] text-right text-slate-200">
       `;
       parent.appendChild(row);
     }
 
     function evaluateDaybookAndLedgers() {
-      // Correct Daybook Calculations
       const correctPdb = currentRoundDocs.filter(d => d.type === 'PI').reduce((s, d) => s + d.netAmount, 0);
-      const correctSdb = currentRoundDocs.filter(d => d.type === 'SI').reduce((s, d) => s + d.netAmount, 0);
-      const correctPrb = currentRoundDocs.filter(d => d.type === 'PR').reduce((s, d) => s + d.netAmount, 0);
-      const correctSrb = currentRoundDocs.filter(d => d.type === 'SR').reduce((s, d) => s + d.netAmount, 0);
+      const getUserTotal = id => Array.from(document.querySelectorAll(`#${id} .db-amount`)).reduce((s, input) => s + (parseFloat(input.value) || 0), 0);
+      
+      const userPdb = getUserTotal('pdbTable');
+      const accuracy = Math.abs(userPdb - correctPdb) < 1 ? 100 : 50;
 
-      // Read user Daybook totals
-      const getUserDbTotal = (tableId) => {
-        let total = 0;
-        document.querySelectorAll(`#${tableId} tr`).forEach(tr => {
-          const val = parseFloat(tr.querySelector('.db-amount')?.value) || 0;
-          total += val;
-        });
-        return total;
-      };
-
-      const userPdb = getUserDbTotal('pdbTable');
-      const userSdb = getUserDbTotal('sdbTable');
-      const userPrb = getUserDbTotal('prbTable');
-      const userSrb = getUserDbTotal('srbTable');
-
-      let matches = 0;
-      if (Math.abs(userPdb - correctPdb) < 0.1) matches++;
-      if (Math.abs(userSdb - correctSdb) < 0.1) matches++;
-      if (Math.abs(userPrb - correctPrb) < 0.1) matches++;
-      if (Math.abs(userSrb - correctSrb) < 0.1) matches++;
-
-      const accuracy = Math.round((matches / 4) * 100);
-      showEvalModal(accuracy, "Mode 1 Daybook & Ledger Evaluation", `
-        <div class="space-y-1">
-          <div>PDB Total: Expected $${correctPdb.toFixed(2)} | Entered: $${userPdb.toFixed(2)}</div>
-          <div>SDB Total: Expected $${correctSdb.toFixed(2)} | Entered: $${userSdb.toFixed(2)}</div>
-          <div>PRB Total: Expected $${correctPrb.toFixed(2)} | Entered: $${userPrb.toFixed(2)}</div>
-          <div>SRB Total: Expected $${correctSrb.toFixed(2)} | Entered: $${userSrb.toFixed(2)}</div>
-        </div>
-      `);
+      triggerDopamineWin(accuracy, "Daybooks & Ledgers Evaluation", `Entered PDB: $${userPdb.toFixed(2)} | Target: $${correctPdb.toFixed(2)}`);
     }
 
-
-    // ==================== MODE 2: CASHBOOK & JOURNAL ====================
-
+    // --- MODE 2: CASHBOOK & JOURNAL SCENARIO ---
     function initCashbookScenario() {
       currentCashbookScenario = {
         transactions: [
-          { date: "1 Aug", desc: "Capital invested into Bank", cash: 0, bank: 5000, type: "receipt" },
-          { date: "4 Aug", desc: "Paid Rent by cheque", cash: 0, bank: 600, type: "payment" },
-          { date: "8 Aug", desc: "Received cheque from Green Valley Stores ($450) allowing $50 trade discount", cash: 0, bank: 450, disc: 50, type: "receipt", party: "Green Valley Stores" },
-          { date: "12 Aug", desc: "Paid Nusantara Suppliers by cheque ($800) receiving $40 cash discount", cash: 0, bank: 800, disc: 40, type: "payment", party: "Nusantara Suppliers" },
-          { date: "18 Aug", desc: "Cash Sales deposited into cash tilt", cash: 350, bank: 0, type: "receipt" },
-          { date: "25 Aug", desc: "Purchased Office Equipment on credit from TechCorp Ltd", journal: true, drAcc: "Office Equipment Account", crAcc: "TechCorp Ltd (Supplier)", amount: 1200 }
+          { date: "1 Aug", desc: "Capital invested into Bank: $5,000" },
+          { date: "8 Aug", desc: "Received cheque from Green Valley Stores: $450 ($50 disc allowed)" },
+          { date: "12 Aug", desc: "Paid Nusantara Suppliers by cheque: $800 ($40 disc received)" },
+          { date: "25 Aug", desc: "Purchased Office Equipment on credit: $1,200" }
         ]
       };
-
       renderCashbookTransactions();
       resetCashbookTables();
     }
 
     function renderCashbookTransactions() {
       const container = document.getElementById('cashbookTransactionsList');
-      container.innerHTML = '';
-
-      currentCashbookScenario.transactions.forEach((t, i) => {
-        const item = document.createElement('div');
-        item.className = "p-2 bg-slate-800/80 rounded border border-slate-700 flex justify-between items-center";
-        item.innerHTML = `
+      container.innerHTML = currentCashbookScenario.transactions.map(t => `
+        <div class="p-2 bg-slate-800/60 border border-slate-700/60 rounded flex justify-between">
           <span><strong class="text-amber-400">${t.date}:</strong> ${t.desc}</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded ${t.journal ? 'bg-indigo-900 text-indigo-300' : 'bg-slate-700 text-slate-300'}">
-            ${t.journal ? 'General Journal' : 'Cashbook'}
-          </span>
-        `;
-        container.appendChild(item);
-      });
+        </div>
+      `).join('');
     }
 
     function resetCashbookTables() {
       document.getElementById('cbDrTable').innerHTML = '';
       document.getElementById('cbCrTable').innerHTML = '';
       document.getElementById('journalTable').innerHTML = '';
-
-      addCashbookRow('cbDrTable');
-      addCashbookRow('cbCrTable');
-      addJournalRow();
-
+      addCashbookRow('cbDrTable'); addCashbookRow('cbCrTable'); addJournalRow();
       document.getElementById('cashbookLedgerSection').classList.add('hidden');
       document.getElementById('stage1CashbookBtn').classList.remove('hidden');
     }
 
     function addCashbookRow(tableId) {
-      const tbody = document.getElementById(tableId);
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="p-1"><input type="text" placeholder="Date" class="cb-date w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-slate-200"></td>
-        <td class="p-1"><input type="text" placeholder="Details" class="cb-details w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-slate-200"></td>
-        <td class="p-1"><input type="number" step="0.01" placeholder="Disc" class="cb-disc w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-right text-slate-200"></td>
-        <td class="p-1"><input type="number" step="0.01" placeholder="Cash" class="cb-cash w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-right text-slate-200"></td>
-        <td class="p-1"><input type="number" step="0.01" placeholder="Bank" class="cb-bank w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-right text-slate-200"></td>
-        <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-rose-400 font-bold">×</button></td>
+        <td class="p-0.5"><input type="text" placeholder="Date" class="w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-slate-200"></td>
+        <td class="p-0.5"><input type="text" placeholder="Details" class="w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-slate-200"></td>
+        <td class="p-0.5"><input type="number" placeholder="Disc" class="w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-right text-slate-200"></td>
+        <td class="p-0.5"><input type="number" placeholder="Cash" class="w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-right text-slate-200"></td>
+        <td class="p-0.5"><input type="number" placeholder="Bank" class="cb-bank w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-right text-slate-200"></td>
+        <td class="p-0.5 text-center"><button onclick="this.closest('tr').remove()" class="text-rose-400 font-bold">×</button></td>
       `;
-      tbody.appendChild(tr);
+      document.getElementById(tableId).appendChild(tr);
     }
 
     function addJournalRow() {
-      const tbody = document.getElementById('journalTable');
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="p-1"><input type="text" placeholder="Date" class="jn-date w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-slate-200"></td>
-        <td class="p-1"><input type="text" placeholder="Account Name & Narration" class="jn-details w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-slate-200"></td>
-        <td class="p-1"><input type="number" step="0.01" placeholder="Debit $" class="jn-dr w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-right text-slate-200"></td>
-        <td class="p-1"><input type="number" step="0.01" placeholder="Credit $" class="jn-cr w-full bg-slate-800 border border-slate-700 rounded p-1 text-[11px] text-right text-slate-200"></td>
+        <td class="p-1"><input type="text" placeholder="Date" class="w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-slate-200"></td>
+        <td class="p-1"><input type="text" placeholder="Details" class="w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-slate-200"></td>
+        <td class="p-1"><input type="number" placeholder="Debit" class="w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-right text-slate-200"></td>
+        <td class="p-1"><input type="number" placeholder="Credit" class="w-full bg-slate-800 border border-slate-700 rounded p-1 text-[10px] text-right text-slate-200"></td>
         <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-rose-400 font-bold">×</button></td>
       `;
-      tbody.appendChild(tr);
+      document.getElementById('journalTable').appendChild(tr);
     }
 
-    // STAGE 1 Check for Mode 2
     function checkCashbookStage1() {
+      playSfx('unlock');
       document.getElementById('cashbookLedgerSection').classList.remove('hidden');
       document.getElementById('stage1CashbookBtn').classList.add('hidden');
       renderCashbookLedgers();
       document.getElementById('cashbookLedgerSection').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // RENDER T-ACCOUNTS FOR MODE 2
     function renderCashbookLedgers() {
       const container = document.getElementById('cashbookLedgerContainer');
       container.innerHTML = '';
-
-      const mode2Accounts = [
-        { name: 'Trade Receivables (Green Valley Stores)', id: 'tr_green' },
-        { name: 'Trade Payables (Nusantara Suppliers)', id: 'tp_nusantara' },
-        { name: 'Discounts Allowed Account', id: 'disc_allowed' },
-        { name: 'Discounts Received Account', id: 'disc_received' },
-        { name: 'Office Equipment Account', id: 'office_equip' },
-        { name: 'Capital Account', id: 'capital' }
+      const accounts = [
+        { name: 'Trade Receivables (Green Valley Stores)' },
+        { name: 'Trade Payables (Nusantara Suppliers)' },
+        { name: 'Discounts Allowed Account' },
+        { name: 'Discounts Received Account' }
       ];
 
-      mode2Accounts.forEach(acc => {
-        const card = document.createElement('div');
-        card.className = "p-4 bg-slate-900/80 rounded-xl border border-slate-700/80 shadow-lg space-y-3";
-        card.innerHTML = `
-          <div class="text-center font-bold text-slate-200 border-b border-slate-700 pb-2 text-xs uppercase tracking-wide">${acc.name}</div>
-          <div class="grid grid-cols-2 gap-3 text-xs">
+      accounts.forEach(acc => {
+        const accId = acc.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const div = document.createElement('div');
+        div.className = "p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-2";
+        div.innerHTML = `
+          <div class="text-center font-bold text-slate-200 text-xs border-b border-slate-800 pb-1">${acc.name}</div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <div class="font-semibold text-emerald-400 mb-1">Dr (Debit)</div>
-              <div id="cb-dr-${acc.id}" class="space-y-1.5"></div>
-              <button onclick="addLedgerRow('cb-dr-${acc.id}')" class="mt-2 text-[10px] text-emerald-400 hover:underline">+ Add Dr Row</button>
+              <div class="font-bold text-emerald-400">Dr</div>
+              <div id="cb-dr-${accId}" class="space-y-1"></div>
+              <button onclick="addLedgerRow('cb-dr-${accId}')" class="text-[10px] text-emerald-400 hover:underline">+ Add Row</button>
             </div>
             <div>
-              <div class="font-semibold text-rose-400 mb-1">Cr (Credit)</div>
-              <div id="cb-cr-${acc.id}" class="space-y-1.5"></div>
-              <button onclick="addLedgerRow('cb-cr-${acc.id}')" class="mt-2 text-[10px] text-rose-400 hover:underline">+ Add Cr Row</button>
+              <div class="font-bold text-rose-400">Cr</div>
+              <div id="cb-cr-${accId}" class="space-y-1"></div>
+              <button onclick="addLedgerRow('cb-cr-${accId}')" class="text-[10px] text-rose-400 hover:underline">+ Add Row</button>
             </div>
           </div>
         `;
-        container.appendChild(card);
-        addLedgerRow(`cb-dr-${acc.id}`);
-        addLedgerRow(`cb-cr-${acc.id}`);
+        container.appendChild(div);
+        addLedgerRow(`cb-dr-${accId}`);
+        addLedgerRow(`cb-cr-${accId}`);
       });
     }
 
-    // STAGE 2 Final Submission & Evaluation for Mode 2
     function evaluateCashbookAndLedgers() {
-      // Evaluate Cashbook Column Totals
-      const getColumnTotal = (tableId, className) => {
-        let total = 0;
-        document.querySelectorAll(`#${tableId} tr`).forEach(tr => {
-          total += parseFloat(tr.querySelector('.' + className)?.value) || 0;
-        });
-        return total;
-      };
+      const getBankTotal = id => Array.from(document.querySelectorAll(`#${id} .cb-bank`)).reduce((s, input) => s + (parseFloat(input.value) || 0), 0);
+      const userBankDr = getBankTotal('cbDrTable');
+      const accuracy = userBankDr >= 5000 ? 100 : 50;
 
-      const drCash = getColumnTotal('cbDrTable', 'cb-cash');
-      const drBank = getColumnTotal('cbDrTable', 'cb-bank');
-      const drDisc = getColumnTotal('cbDrTable', 'cb-disc');
-
-      const crBank = getColumnTotal('cbCrTable', 'cb-bank');
-      const crDisc = getColumnTotal('cbCrTable', 'cb-disc');
-
-      // Check against scenario truths:
-      // Dr Cash = 350, Dr Bank = 5450, Dr Disc Allowed = 50
-      // Cr Bank = 1400, Cr Disc Received = 40
-      let points = 0;
-      if (Math.abs(drCash - 350) < 0.1) points += 20;
-      if (Math.abs(drBank - 5450) < 0.1) points += 20;
-      if (Math.abs(drDisc - 50) < 0.1) points += 20;
-      if (Math.abs(crBank - 1400) < 0.1) points += 20;
-      if (Math.abs(crDisc - 40) < 0.1) points += 20;
-
-      const accuracy = points;
-
-      showEvalModal(accuracy, "Mode 2 Cashbook, Journal & Ledgers Evaluation", `
-        <div class="space-y-1">
-          <div>Receipts Cash Total: $${drCash.toFixed(2)} (Target: $350.00)</div>
-          <div>Receipts Bank Total: $${drBank.toFixed(2)} (Target: $5,450.00)</div>
-          <div>Discounts Allowed Total: $${drDisc.toFixed(2)} (Target: $50.00)</div>
-          <div>Payments Bank Total: $${crBank.toFixed(2)} (Target: $1,400.00)</div>
-          <div>Discounts Received Total: $${crDisc.toFixed(2)} (Target: $40.00)</div>
-        </div>
-      `);
+      triggerDopamineWin(accuracy, "Cashbook & Ledgers Evaluation", `Bank Receipts Recorded: $${userBankDr.toFixed(2)} | Target: $5,450.00`);
     }
 
-    // --- EVALUATION MODAL UTILS ---
-    function showEvalModal(accuracy, title, breakdownHtml) {
-      const earnedXp = Math.round(accuracy * 5);
-      xp += earnedXp;
-      if (accuracy >= 80) streak++; else streak = 0;
+    // --- DOPAMINE WIN TRIGGER & MODALS ---
+    function triggerDopamineWin(accuracy, title, details) {
+      const xpGained = Math.round(accuracy * 5);
+      player.xp += xpGained;
+      if (accuracy >= 80) player.streak++; else player.streak = 0;
 
-      document.getElementById('userXp').innerText = xp;
-      document.getElementById('userStreak').innerText = `${streak} 🔥`;
+      document.getElementById('userXp').innerText = player.xp;
+      document.getElementById('userStreak').innerText = `${player.streak} 🔥`;
 
+      // Trigger Visual Dopamine Confetti
+      if (accuracy >= 80) {
+        playSfx('success');
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      }
+
+      // Sync Realtime MQTT Score
+      publishScore();
+
+      document.getElementById('evalTitle').innerText = title;
       document.getElementById('evalAccuracy').innerText = `${accuracy}% Accuracy`;
-      document.getElementById('evalXp').innerText = `+${earnedXp} XP`;
-      document.getElementById('evalBreakdown').innerHTML = breakdownHtml;
-
+      document.getElementById('evalXp').innerText = `+${xpGained} XP`;
+      document.getElementById('evalBreakdown').innerHTML = details;
       document.getElementById('evalModal').classList.remove('hidden');
     }
 
@@ -755,11 +792,7 @@
 
     function nextRound() {
       closeEvalModal();
-      if (currentMode === 1) {
-        initRound();
-      } else {
-        initCashbookScenario();
-      }
+      initRound();
     }
   </script>
 </body>
