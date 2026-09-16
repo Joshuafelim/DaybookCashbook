@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-900 text-slate-100">
 <head>
     <meta charset="UTF-8">
@@ -1036,6 +1036,162 @@
             document.getElementById('daybookHintBox').classList.remove('hidden');
         }
 
+        function renderDaybookLedgers() {
+            const container = document.getElementById('ledgersContainer');
+            if (!container || !state.daybookData) return;
+
+            // Collect unique customers and suppliers from active scenario docs
+            const parties = new Set();
+            state.daybookData.docs.forEach(d => parties.add(d.party));
+
+            const nominalLedgers = [
+                { title: 'Purchases Account', type: 'Nominal Ledger', drDefault: 'Total PDB', crDefault: '' },
+                { title: 'Sales Account', type: 'Nominal Ledger', drDefault: '', crDefault: 'Total SDB' },
+                { title: 'Purchases Returns Account', type: 'Nominal Ledger', drDefault: '', crDefault: 'Total PRB' },
+                { title: 'Sales Returns Account', type: 'Nominal Ledger', drDefault: 'Total SRB', crDefault: '' }
+            ];
+
+            let html = nominalLedgers.map(l => `
+                <div class="glass-card rounded-xl p-4 border border-slate-800 space-y-2">
+                    <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                        <h5 class="font-bold text-sm text-white flex items-center gap-2">
+                            <i class="fa-solid fa-book-bookmark text-brand-400"></i> ${l.title}
+                        </h5>
+                        <span class="text-[10px] text-slate-400 font-mono">${l.type}</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="bg-slate-900/60 p-2.5 rounded-xl space-y-1.5 border border-slate-800">
+                            <span class="font-bold text-emerald-400 text-[10px] uppercase tracking-wider block">Dr (Debit) Side</span>
+                            <input type="text" value="${l.drDefault}" placeholder="Particulars" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-brand-500">
+                            <input type="number" step="0.01" placeholder="Amount $" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-emerald-400 text-right outline-none focus:border-brand-500">
+                        </div>
+                        <div class="bg-slate-900/60 p-2.5 rounded-xl space-y-1.5 border border-slate-800">
+                            <span class="font-bold text-rose-400 text-[10px] uppercase tracking-wider block">Cr (Credit) Side</span>
+                            <input type="text" value="${l.crDefault}" placeholder="Particulars" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-brand-500">
+                            <input type="number" step="0.01" placeholder="Amount $" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-rose-400 text-right outline-none focus:border-brand-500">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Append Personal Ledgers for active counterparties
+            parties.forEach(partyName => {
+                html += `
+                    <div class="glass-card rounded-xl p-4 border border-slate-800 space-y-2">
+                        <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                            <h5 class="font-bold text-sm text-accent-400 flex items-center gap-2">
+                                <i class="fa-solid fa-user text-accent-400"></i> ${partyName} Account
+                            </h5>
+                            <span class="text-[10px] text-slate-400 font-mono">Personal Ledger</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div class="bg-slate-900/60 p-2.5 rounded-xl space-y-1.5 border border-slate-800">
+                                <span class="font-bold text-emerald-400 text-[10px] uppercase tracking-wider block">Dr (Debit) Side</span>
+                                <input type="text" placeholder="Particulars" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-accent-500">
+                                <input type="number" step="0.01" placeholder="Amount $" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-emerald-400 text-right outline-none focus:border-accent-500">
+                            </div>
+                            <div class="bg-slate-900/60 p-2.5 rounded-xl space-y-1.5 border border-slate-800">
+                                <span class="font-bold text-rose-400 text-[10px] uppercase tracking-wider block">Cr (Credit) Side</span>
+                                <input type="text" placeholder="Particulars" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-accent-500">
+                                <input type="number" step="0.01" placeholder="Amount $" class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-rose-400 text-right outline-none focus:border-accent-500">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function startCashbookGame() {
+            playSound('click');
+            state.currentMode = 'cashbook';
+
+            document.getElementById('dashboardView').classList.add('hidden');
+            document.getElementById('daybookGameView').classList.add('hidden');
+            document.getElementById('cashbookGameView').classList.remove('hidden');
+            document.getElementById('cashbookRoundBadge').innerText = `Round ${state.round}`;
+
+            renderCashbookTransactions();
+            initCashbookForms();
+        }
+
+        function renderCashbookTransactions() {
+            const listEl = document.getElementById('cashbookTransactionsList');
+            if (!listEl) return;
+            const txs = [
+                { date: '04 Aug', desc: 'Started business with cash in hand', amount: '$2,000 Cash' },
+                { date: '06 Aug', desc: 'Purchased Delivery Van on credit from Auto Motors Ltd', amount: '$7,000 Asset' },
+                { date: '09 Aug', desc: 'Received cheque from City Mart Ltd in full settlement of $800 debt (allowed $20 cash discount)', amount: '$780 Cheque' },
+                { date: '12 Aug', desc: 'Paid supplier Nusantara Ltd by cheque in full settlement of $1,500 debt after deducting $50 cash discount', amount: '$1,450 Cheque' },
+                { date: '18 Aug', desc: 'Paid $600 cash in hand directly into business bank account (Contra)', amount: '$600 Contra' }
+            ];
+            listEl.innerHTML = txs.map(t => `
+                <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                    <div>
+                        <span class="font-mono text-[10px] text-accent-400 block font-bold">${t.date}</span>
+                        <span class="text-slate-200 text-xs font-medium">${t.desc}</span>
+                    </div>
+                    <span class="font-mono font-bold text-xs text-emerald-400 ml-2 whitespace-nowrap text-right">${t.amount}</span>
+                </div>
+            `).join('');
+        }
+
+        function createCashbookRowHTML() {
+            return `
+                <tr class="hover:bg-slate-800/50">
+                    <td class="p-1"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs text-slate-200 outline-none focus:border-accent-500"></td>
+                    <td class="p-1"><input type="text" placeholder="Details" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs text-slate-200 outline-none focus:border-accent-500"></td>
+                    <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono text-amber-400 text-right outline-none focus:border-accent-500"></td>
+                    <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono text-emerald-400 text-right outline-none focus:border-accent-500"></td>
+                    <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono text-emerald-400 text-right outline-none focus:border-accent-500"></td>
+                    <td class="p-1 text-center"><button onclick="deleteRow(this)" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>
+            `;
+        }
+
+        function addCashbookDrRow() {
+            document.getElementById('cashbookDrRows').insertAdjacentHTML('beforeend', createCashbookRowHTML());
+        }
+
+        function addCashbookCrRow() {
+            document.getElementById('cashbookCrRows').insertAdjacentHTML('beforeend', createCashbookRowHTML());
+        }
+
+        function createJournalRowHTML() {
+            return `
+                <tr class="hover:bg-slate-800/50">
+                    <td class="p-1.5"><input type="text" placeholder="06 Aug" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-accent-500"></td>
+                    <td class="p-1.5"><input type="text" placeholder="Account Name / Narration" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 outline-none focus:border-accent-500"></td>
+                    <td class="p-1.5"><input type="number" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-emerald-400 text-right outline-none focus:border-accent-500"></td>
+                    <td class="p-1.5"><input type="number" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-rose-400 text-right outline-none focus:border-accent-500"></td>
+                    <td class="p-1.5 text-center"><button onclick="deleteRow(this)" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>
+            `;
+        }
+
+        function addJournalRow() {
+            document.getElementById('journalRows').insertAdjacentHTML('beforeend', createJournalRowHTML());
+        }
+
+        function initCashbookForms() {
+            document.getElementById('cashbookDrRows').innerHTML = '';
+            document.getElementById('cashbookCrRows').innerHTML = '';
+            document.getElementById('journalRows').innerHTML = '';
+
+            addCashbookDrRow();
+            addCashbookDrRow();
+            addCashbookCrRow();
+            addCashbookCrRow();
+            addJournalRow();
+            addJournalRow();
+        }
+
+        function showCashbookHint() {
+            playSound('click');
+            document.getElementById('cashbookHintBox').classList.remove('hidden');
+        }
+
         function startDaybookGame() {
             playSound('click');
             state.currentMode = 'daybook';
@@ -1083,11 +1239,28 @@
 
         function checkDaybookStage() {
             playSound('click');
+            const evalRes = evaluateDaybookSubmission();
+            
+            // Check if any entries were filled in at all
+            const hasAnyEntry = ['pdbRows', 'sdbRows', 'prbRows', 'srbRows'].some(id => parseTableRows(id).length > 0);
+
+            if (!hasAnyEntry) {
+                const daybookHintBox = document.getElementById('daybookHintBox');
+                daybookHintBox.classList.remove('hidden');
+                daybookHintBox.querySelector('div div').innerHTML = `
+                    <strong class="font-bold block text-rose-400 mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Daybooks are Empty!</strong>
+                    <p class="text-xs text-amber-200">You haven't entered any transactions into the Daybooks yet. Read the Source Documents on the left and enter the date, party name, and net amount into the appropriate Daybook table before submitting!</p>
+                `;
+            }
+
             state.daybooksPassed = true;
             state.daybookStage = 2;
 
-            document.getElementById('daybookStageStatus').innerText = 'Stage 1 Unlocked';
-            document.getElementById('daybookStageStatus').className = 'text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30';
+            document.getElementById('daybookStageStatus').innerText = `Stage 1 Unlocked (${evalRes.daybookAccuracy}% Acc)`;
+            document.getElementById('daybookStageStatus').className = evalRes.daybookAccuracy > 70 
+                ? 'text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold'
+                : 'text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 font-bold';
+            
             document.getElementById('ledgerLockIcon').className = 'fa-solid fa-lock-open text-brand-400';
 
             document.getElementById('checkDaybooksBtn').classList.add('hidden');
@@ -1097,62 +1270,249 @@
             switchDaybookTab('ledgers');
         }
 
-        function renderDaybookLedgers() {
-            const container = document.getElementById('ledgersContainer');
-            if (!container || !state.daybookData) return;
+        function parseTableRows(containerId) {
+            const tbody = document.getElementById(containerId);
+            if (!tbody) return [];
+            const rows = [];
+            const trs = tbody.querySelectorAll('tr');
+            trs.forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                if (inputs.length >= 3) {
+                    const date = inputs[0].value.trim();
+                    const party = inputs[1].value.trim().toLowerCase();
+                    const amount = parseFloat(inputs[2].value) || 0;
+                    if (date || party || amount > 0) {
+                        rows.push({ date, party, amount });
+                    }
+                }
+            });
+            return rows;
+        }
 
-            const data = state.daybookData;
-            const ledgers = [
-                { name: 'Purchases Account', type: 'General Ledger (Nominal)', debitExpected: `$${data.totals.PDB.toFixed(2)} (PDB Total)`, creditExpected: '-' },
-                { name: 'Sales Account', type: 'General Ledger (Nominal)', debitExpected: '-', creditExpected: `$${data.totals.SDB.toFixed(2)} (SDB Total)` },
-                { name: 'Purchases Returns Account', type: 'General Ledger (Nominal)', debitExpected: '-', creditExpected: `$${data.totals.PRB.toFixed(2)} (PRB Total)` },
-                { name: 'Sales Returns Account', type: 'General Ledger (Nominal)', debitExpected: `$${data.totals.SRB.toFixed(2)} (SRB Total)`, creditExpected: '-' }
+        function parseCashbookRows(tbodyId) {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return [];
+            const rows = [];
+            tbody.querySelectorAll('tr').forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                if (inputs.length >= 5) {
+                    const date = inputs[0].value.trim();
+                    const details = inputs[1].value.trim().toLowerCase();
+                    const disc = parseFloat(inputs[2].value) || 0;
+                    const cash = parseFloat(inputs[3].value) || 0;
+                    const bank = parseFloat(inputs[4].value) || 0;
+                    if (date || details || disc > 0 || cash > 0 || bank > 0) {
+                        rows.push({ date, details, disc, cash, bank });
+                    }
+                }
+            });
+            return rows;
+        }
+
+        function parseJournalRows(tbodyId) {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return [];
+            const rows = [];
+            tbody.querySelectorAll('tr').forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                if (inputs.length >= 4) {
+                    const date = inputs[0].value.trim();
+                    const details = inputs[1].value.trim().toLowerCase();
+                    const dr = parseFloat(inputs[2].value) || 0;
+                    const cr = parseFloat(inputs[3].value) || 0;
+                    if (date || details || dr > 0 || cr > 0) {
+                        rows.push({ date, details, dr, cr });
+                    }
+                }
+            });
+            return rows;
+        }
+
+        function evaluateDaybookSubmission() {
+            if (!state.daybookData) return { accuracy: 0, daybookAccuracy: 0, ledgerAccuracy: 0, breakdown: [] };
+
+            const docs = state.daybookData.docs;
+            const totals = state.daybookData.totals;
+
+            const books = [
+                { key: 'PDB', name: 'Purchases Day Book', rowId: 'pdbRows', targetTotal: totals.PDB, expectedDocs: docs.filter(d => d.targetDaybook === 'PDB') },
+                { key: 'SDB', name: 'Sales Day Book', rowId: 'sdbRows', targetTotal: totals.SDB, expectedDocs: docs.filter(d => d.targetDaybook === 'SDB') },
+                { key: 'PRB', name: 'Purchases Returns Book', rowId: 'prbRows', targetTotal: totals.PRB, expectedDocs: docs.filter(d => d.targetDaybook === 'PRB') },
+                { key: 'SRB', name: 'Sales Returns Book', rowId: 'srbRows', targetTotal: totals.SRB, expectedDocs: docs.filter(d => d.targetDaybook === 'SRB') }
             ];
 
-            container.innerHTML = ledgers.map((lg) => `
-                <div class="glass-card rounded-xl p-4 border border-slate-800 space-y-3">
-                    <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                        <h4 class="font-bold text-sm text-white flex items-center gap-2">
-                            <i class="fa-solid fa-book-open text-brand-400"></i> ${lg.name}
-                        </h4>
-                        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-brand-400 font-mono">${lg.type}</span>
-                    </div>
+            let totalPoints = 0;
+            let maxPoints = 0;
+            const breakdown = [];
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                        <div class="border-r-0 md:border-r border-slate-700 md:pr-3 space-y-2">
-                            <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                                <span>DEBIT (DR)</span>
-                                <span class="text-slate-500 font-mono">Target: ${lg.debitExpected}</span>
-                            </div>
-                            <div class="flex gap-2">
-                                <input type="text" placeholder="Date/Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 outline-none focus:border-brand-500">
-                                <input type="number" step="0.01" placeholder="$ Dr Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
-                            </div>
-                        </div>
+            books.forEach(b => {
+                const userEntries = parseTableRows(b.rowId);
+                const userTotal = userEntries.reduce((sum, r) => sum + r.amount, 0);
+                
+                const totalMax = 15;
+                let totalEarned = 0;
+                const totalDiff = Math.abs(userTotal - b.targetTotal);
+                
+                if (b.expectedDocs.length === 0 && userTotal === 0) {
+                    totalEarned = totalMax;
+                } else if (b.targetTotal > 0 && totalDiff < 0.1) {
+                    totalEarned = totalMax;
+                } else if (b.targetTotal > 0 && totalDiff < Math.max(1, b.targetTotal * 0.15)) {
+                    totalEarned = Math.round(totalMax * 0.5);
+                }
 
-                        <div class="md:pl-1 space-y-2">
-                            <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                                <span>CREDIT (CR)</span>
-                                <span class="text-slate-500 font-mono">Target: ${lg.creditExpected}</span>
-                            </div>
-                            <div class="flex gap-2">
-                                <input type="text" placeholder="Date/Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 outline-none focus:border-brand-500">
-                                <input type="number" step="0.01" placeholder="$ Cr Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+                const itemMax = 15;
+                let itemEarned = 0;
+                
+                if (b.expectedDocs.length === 0) {
+                    if (userEntries.length === 0) itemEarned = itemMax;
+                } else {
+                    let matchedCount = 0;
+                    b.expectedDocs.forEach(doc => {
+                        const docParty = doc.party.toLowerCase();
+                        const matched = userEntries.some(u => 
+                            (u.party.includes(docParty) || docParty.includes(u.party)) && 
+                            Math.abs(u.amount - doc.totalNet) < 0.10
+                        );
+                        if (matched) matchedCount++;
+                    });
+                    itemEarned = Math.round((matchedCount / b.expectedDocs.length) * itemMax);
+                }
+
+                const bookPoints = totalEarned + itemEarned;
+                const bookMax = totalMax + itemMax;
+                totalPoints += bookPoints;
+                maxPoints += bookMax;
+
+                breakdown.push({
+                    name: b.name,
+                    expectedTotal: b.targetTotal,
+                    userTotal: userTotal,
+                    expectedCount: b.expectedDocs.length,
+                    userCount: userEntries.length,
+                    isCorrect: totalEarned === totalMax && itemEarned === itemMax,
+                    points: bookPoints,
+                    maxPoints: bookMax
+                });
+            });
+
+            const daybookAccuracy = maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0;
+
+            // Evaluate Ledgers
+            let ledgerPoints = 0;
+            let ledgerMax = 40;
+            const ledgerCards = document.querySelectorAll('#ledgersContainer > div');
+            
+            const expectedLedgers = [
+                { name: 'Purchases Account', side: 'dr', value: totals.PDB },
+                { name: 'Sales Account', side: 'cr', value: totals.SDB },
+                { name: 'Purchases Returns Account', side: 'cr', value: totals.PRB },
+                { name: 'Sales Returns Account', side: 'dr', value: totals.SRB }
+            ];
+
+            expectedLedgers.forEach((el, idx) => {
+                if (ledgerCards[idx]) {
+                    const inputs = ledgerCards[idx].querySelectorAll('input');
+                    const userDr = inputs.length >= 2 ? (parseFloat(inputs[1].value) || 0) : 0;
+                    const userCr = inputs.length >= 4 ? (parseFloat(inputs[3].value) || 0) : 0;
+
+                    const targetVal = el.value;
+                    if (targetVal === 0) {
+                        if (userDr === 0 && userCr === 0) ledgerPoints += 10;
+                    } else if (el.side === 'dr') {
+                        if (Math.abs(userDr - targetVal) < 0.1 && userCr === 0) ledgerPoints += 10;
+                        else if (Math.abs(userDr - targetVal) < 1.0) ledgerPoints += 5;
+                    } else {
+                        if (Math.abs(userCr - targetVal) < 0.1 && userDr === 0) ledgerPoints += 10;
+                        else if (Math.abs(userCr - targetVal) < 1.0) ledgerPoints += 5;
+                    }
+                }
+            });
+
+            const ledgerAccuracy = (ledgerPoints / ledgerMax) * 100;
+            const finalAccuracy = Math.round((daybookAccuracy * 0.6) + (ledgerAccuracy * 0.4));
+
+            return {
+                accuracy: finalAccuracy,
+                daybookAccuracy: Math.round(daybookAccuracy),
+                ledgerAccuracy: Math.round(ledgerAccuracy),
+                breakdown
+            };
+        }
+
+        function evaluateCashbookSubmission() {
+            const expectedDr = [
+                { details: 'capital', cash: 2000, bank: 0, disc: 0 },
+                { details: 'city mart', cash: 0, bank: 780, disc: 20 },
+                { details: 'cash', cash: 0, bank: 600, disc: 0 }
+            ];
+            const expectedCr = [
+                { details: 'nusantara', cash: 0, bank: 1450, disc: 50 },
+                { details: 'bank', cash: 600, bank: 0, disc: 0 }
+            ];
+            const expectedJournal = [
+                { details: 'delivery vehicle', dr: 7000, cr: 0 },
+                { details: 'auto motors', dr: 0, cr: 7000 }
+            ];
+
+            const userDrRows = parseCashbookRows('cashbookDrRows');
+            const userCrRows = parseCashbookRows('cashbookCrRows');
+            const userJournalRows = parseJournalRows('journalRows');
+
+            if (userDrRows.length === 0 && userCrRows.length === 0 && userJournalRows.length === 0) {
+                return 0;
+            }
+
+            let points = 0;
+
+            let drMatched = 0;
+            expectedDr.forEach(exp => {
+                const found = userDrRows.some(u => 
+                    (u.details.includes(exp.details) || exp.details.includes(u.details)) &&
+                    Math.abs(u.cash - exp.cash) < 1 &&
+                    Math.abs(u.bank - exp.bank) < 1 &&
+                    Math.abs(u.disc - exp.disc) < 1
+                );
+                if (found) drMatched++;
+            });
+            points += Math.round((drMatched / expectedDr.length) * 35);
+
+            let crMatched = 0;
+            expectedCr.forEach(exp => {
+                const found = userCrRows.some(u => 
+                    (u.details.includes(exp.details) || exp.details.includes(u.details)) &&
+                    Math.abs(u.cash - exp.cash) < 1 &&
+                    Math.abs(u.bank - exp.bank) < 1 &&
+                    Math.abs(u.disc - exp.disc) < 1
+                );
+                if (found) crMatched++;
+            });
+            points += Math.round((crMatched / expectedCr.length) * 35);
+
+            let jMatched = 0;
+            expectedJournal.forEach(exp => {
+                const found = userJournalRows.some(u => 
+                    (u.details.includes(exp.details) || exp.details.includes(u.details)) &&
+                    Math.abs(u.dr - exp.dr) < 1 &&
+                    Math.abs(u.cr - exp.cr) < 1
+                );
+                if (found) jMatched++;
+            });
+            points += Math.round((jMatched / expectedJournal.length) * 30);
+
+            return Math.min(100, Math.max(0, points));
         }
 
         function submitDaybookAnswer() {
             playSound('click');
-            const accuracy = 100;
-            const earnedXP = 600;
+            const evalResult = evaluateDaybookSubmission();
+            const accuracy = evalResult.accuracy;
+            const earnedXP = Math.round((accuracy / 100) * 600);
 
             state.xp += earnedXP;
-            state.streak += 1;
-            playSound('success');
+            if (accuracy >= 60) state.streak += 1;
+            
+            if (accuracy >= 70) playSound('success');
 
             state.leaderboard.unshift({
                 name: 'You (Student)',
@@ -1163,17 +1523,73 @@
 
             const data = state.daybookData;
             const modal = document.getElementById('evalModal');
-            document.getElementById('evalBadgeIcon').className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-brand-500/20 text-brand-400 border border-brand-500/30';
-            document.getElementById('evalBadgeIcon').innerHTML = '<i class="fa-solid fa-award"></i>';
-            document.getElementById('evalTitle').innerText = 'Round Completed!';
-            document.getElementById('evalSubtitle').innerText = 'Official Pearson Answer Keys & Performance Breakdown';
+            
+            const badgeIcon = document.getElementById('evalBadgeIcon');
+            if (accuracy >= 80) {
+                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-brand-500/20 text-brand-400 border border-brand-500/30';
+                badgeIcon.innerHTML = '<i class="fa-solid fa-award"></i>';
+                document.getElementById('evalTitle').innerText = 'Round Completed!';
+            } else if (accuracy >= 40) {
+                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                badgeIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                document.getElementById('evalTitle').innerText = 'Practice Needed!';
+            } else {
+                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30';
+                badgeIcon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+                document.getElementById('evalTitle').innerText = 'Incomplete or Incorrect!';
+            }
+
+            document.getElementById('evalSubtitle').innerText = 'Official Pearson Answer Keys & Detailed Verification Breakdown';
 
             document.getElementById('evalScoreXP').innerText = `+${earnedXP} XP`;
             document.getElementById('evalAccuracy').innerText = `Accuracy: ${accuracy}%`;
 
             document.getElementById('evalBodyContent').innerHTML = `
-                <div class="space-y-4 text-xs">
-                    <h4 class="font-bold text-white text-base border-b border-slate-800 pb-2">Official Pearson Daybook Totals Key:</h4>
+                <div class="space-y-5 text-xs">
+                    <!-- Accuracy Scorecard Cards -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-center">
+                            <span class="text-slate-400 text-[11px] font-semibold uppercase block">Daybooks Accuracy</span>
+                            <span class="text-lg font-extrabold ${evalResult.daybookAccuracy >= 70 ? 'text-brand-400' : 'text-amber-400'}">${evalResult.daybookAccuracy}%</span>
+                        </div>
+                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 text-center">
+                            <span class="text-slate-400 text-[11px] font-semibold uppercase block">T-Account Ledgers Accuracy</span>
+                            <span class="text-lg font-extrabold ${evalResult.ledgerAccuracy >= 70 ? 'text-accent-400' : 'text-amber-400'}">${evalResult.ledgerAccuracy}%</span>
+                        </div>
+                    </div>
+
+                    <!-- Daybooks Comparison Table -->
+                    <div class="space-y-2">
+                        <h4 class="font-bold text-white text-sm">Daybook Entry Verification:</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-mono">
+                                    <tr>
+                                        <th class="p-2">Daybook</th>
+                                        <th class="p-2 text-right">Expected Total</th>
+                                        <th class="p-2 text-right">Your Total</th>
+                                        <th class="p-2 text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800 font-mono text-xs">
+                                    ${evalResult.breakdown.map(b => `
+                                        <tr>
+                                            <td class="p-2 font-sans font-bold text-slate-200">${b.name}</td>
+                                            <td class="p-2 text-right text-brand-400">$${b.expectedTotal.toFixed(2)}</td>
+                                            <td class="p-2 text-right ${Math.abs(b.userTotal - b.expectedTotal) < 0.1 ? 'text-emerald-400' : 'text-rose-400'}">$${b.userTotal.toFixed(2)}</td>
+                                            <td class="p-2 text-center font-sans">
+                                                ${Math.abs(b.userTotal - b.expectedTotal) < 0.1 
+                                                    ? '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> Correct</span>'
+                                                    : '<span class="px-2 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-400 font-bold"><i class="fa-solid fa-xmark"></i> Incorrect</span>'}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <h4 class="font-bold text-white text-sm border-b border-slate-800 pb-2">Official Pearson Daybook Key:</h4>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
                         <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
                             <span class="text-slate-500 text-[10px] block">PURCHASES DAY BOOK</span>
@@ -1198,104 +1614,14 @@
             modal.classList.remove('hidden');
         }
 
-        // =========================================================
-        // CASHBOOK GAME LOGIC
-        // =========================================================
-        function startCashbookGame() {
-            playSound('click');
-            state.currentMode = 'cashbook';
-
-            document.getElementById('dashboardView').classList.add('hidden');
-            document.getElementById('cashbookGameView').classList.remove('hidden');
-            document.getElementById('cashbookRoundBadge').innerText = `Round ${state.round}`;
-
-            renderCashbookTransactions();
-            initCashbookForms();
-        }
-
-        function renderCashbookTransactions() {
-            const container = document.getElementById('cashbookTransactionsList');
-            if (!container) return;
-
-            const transactions = [
-                { date: '04 Aug', desc: 'Introduced initial capital into business cash in hand', amount: '$2,000 Cash' },
-                { date: '06 Aug', desc: 'Purchased Delivery Van on credit from Auto Motors Ltd', amount: '$7,000 (Journal)' },
-                { date: '09 Aug', desc: 'Received cheque from customer City Mart Ltd in full settlement of $800 invoice (Discount $20)', amount: '$780 Bank' },
-                { date: '12 Aug', desc: 'Paid supplier Nusantara Ltd by cheque $1,450 after receiving 3% cash discount ($50)', amount: '$1,450 Bank' },
-                { date: '18 Aug', desc: 'Banked cash in hand (Contra entry C)', amount: '$600 Contra' }
-            ];
-
-            container.innerHTML = transactions.map(t => `
-                <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <div>
-                        <span class="font-bold text-slate-300 block">${t.date} - ${t.desc}</span>
-                    </div>
-                    <span class="font-mono font-bold text-accent-400 text-right shrink-0 ml-2">${t.amount}</span>
-                </div>
-            `).join('');
-        }
-
-        function initCashbookForms() {
-            document.getElementById('cashbookDrRows').innerHTML = '';
-            document.getElementById('cashbookCrRows').innerHTML = '';
-            document.getElementById('journalRows').innerHTML = '';
-
-            addCashbookDrRow();
-            addCashbookCrRow();
-            addJournalRow();
-        }
-
-        function addCashbookDrRow() {
-            document.getElementById('cashbookDrRows').insertAdjacentHTML('beforeend', `
-                <tr>
-                    <td class="p-1"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
-                    <td class="p-1"><input type="text" placeholder="Details" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
-                    <td class="p-1"><input type="number" placeholder="Disc" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-right text-amber-400"></td>
-                    <td class="p-1"><input type="number" placeholder="Cash" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-right text-emerald-400"></td>
-                    <td class="p-1"><input type="number" placeholder="Bank" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-right text-brand-400"></td>
-                    <td class="p-1 text-center"><button onclick="deleteRow(this)" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
-                </tr>
-            `);
-        }
-
-        function addCashbookCrRow() {
-            document.getElementById('cashbookCrRows').insertAdjacentHTML('beforeend', `
-                <tr>
-                    <td class="p-1"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
-                    <td class="p-1"><input type="text" placeholder="Details" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
-                    <td class="p-1"><input type="number" placeholder="Disc" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-right text-amber-400"></td>
-                    <td class="p-1"><input type="number" placeholder="Cash" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-right text-emerald-400"></td>
-                    <td class="p-1"><input type="number" placeholder="Bank" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-right text-brand-400"></td>
-                    <td class="p-1 text-center"><button onclick="deleteRow(this)" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
-                </tr>
-            `);
-        }
-
-        function addJournalRow() {
-            document.getElementById('journalRows').insertAdjacentHTML('beforeend', `
-                <tr>
-                    <td class="p-1.5"><input type="text" placeholder="06 Aug" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
-                    <td class="p-1.5"><input type="text" placeholder="Account Particulars / Narration" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
-                    <td class="p-1.5"><input type="number" step="0.01" placeholder="$ Dr" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-right text-brand-400"></td>
-                    <td class="p-1.5"><input type="number" step="0.01" placeholder="$ Cr" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-right text-emerald-400"></td>
-                    <td class="p-1.5 text-center"><button onclick="deleteRow(this)" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
-                </tr>
-            `);
-        }
-
-        function showCashbookHint() {
-            playSound('click');
-            document.getElementById('cashbookHintBox').classList.remove('hidden');
-        }
-
         function submitCashbookAnswer() {
             playSound('click');
-            const earnedXP = 500;
-            const accuracy = 95;
+            const accuracy = evaluateCashbookSubmission();
+            const earnedXP = Math.round((accuracy / 100) * 500);
 
             state.xp += earnedXP;
-            state.streak += 1;
-            playSound('success');
+            if (accuracy >= 60) state.streak += 1;
+            if (accuracy >= 70) playSound('success');
 
             state.leaderboard.unshift({
                 name: 'You (Student)',
@@ -1305,16 +1631,31 @@
             });
 
             const modal = document.getElementById('evalModal');
-            document.getElementById('evalBadgeIcon').className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-            document.getElementById('evalBadgeIcon').innerHTML = '<i class="fa-solid fa-trophy"></i>';
-            document.getElementById('evalTitle').innerText = 'Cashbook & Journal Completed!';
-            document.getElementById('evalSubtitle').innerText = 'Official Pearson Solution Key';
+            const badgeIcon = document.getElementById('evalBadgeIcon');
+            
+            if (accuracy >= 80) {
+                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                badgeIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+                document.getElementById('evalTitle').innerText = 'Cashbook & Journal Completed!';
+            } else {
+                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                badgeIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                document.getElementById('evalTitle').innerText = accuracy === 0 ? 'Empty Submission!' : 'Review Required!';
+            }
+
+            document.getElementById('evalSubtitle').innerText = 'Official Pearson Solution Key & Entry Comparison';
 
             document.getElementById('evalScoreXP').innerText = `+${earnedXP} XP`;
             document.getElementById('evalAccuracy').innerText = `Accuracy: ${accuracy}%`;
 
             document.getElementById('evalBodyContent').innerHTML = `
                 <div class="space-y-4 text-xs">
+                    ${accuracy === 0 ? `
+                        <div class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 font-semibold">
+                            <i class="fa-solid fa-circle-exclamation mr-1"></i> You submitted empty forms or incorrect entries. Check the solution key below to learn the correct postings!
+                        </div>
+                    ` : ''}
+
                     <h4 class="font-bold text-white text-base border-b border-slate-800 pb-2">Official Pearson Solution Key:</h4>
 
                     <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800 space-y-3">
