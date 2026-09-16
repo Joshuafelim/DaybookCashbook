@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accounting Master: Pearson IAL Practice Arena</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for accounting & game icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tone.js for game sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        },
+                        accent: {
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbars and styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-card-light { background: rgba(255, 255, 255, 0.95); color: #0f172a; }
+        .t-account-line { border-top: 2px solid #64748b; border-bottom: 1px solid #475569; }
+        .glow-success { box-shadow: 0 0 15px rgba(34, 197, 94, 0.35); }
+        .glow-error { box-shadow: 0 0 15px rgba(239, 68, 68, 0.35); }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased overflow-x-hidden selection:bg-brand-500 selection:text-white">
+
+    <header class="bg-slate-950/80 backdrop-filter blur-md border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showDashboard()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-600 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-calculator text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg tracking-wide text-white flex items-center gap-2">
+                        ACCOUNTING MASTER <span class="bg-brand-500/20 text-brand-400 text-xs px-2 py-0.5 rounded border border-brand-500/30 font-semibold">IAL Edition</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Pearson Level 10 Prime Entry & Ledgers Practice</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <!-- Streak Badge -->
+                <div class="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1.5 rounded-full text-sm font-semibold">
+                    <i class="fa-solid fa-fire animate-bounce text-amber-500"></i>
+                    <span>Streak: <span id="userStreak">0</span> d</span>
+                </div>
+                <!-- XP / Score -->
+                <div class="flex items-center space-x-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full text-sm font-semibold">
+                    <i class="fa-solid fa-trophy text-yellow-400"></i>
+                    <span id="userXP">0 XP</span>
+                </div>
+                <!-- Audio Toggle -->
+                <button id="soundToggle" onclick="toggleAudio()" class="p-2 text-slate-400 hover:text-white rounded-lg bg-slate-800 hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-volume-high" id="soundIcon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- ========================================================= -->
+        <!-- DASHBOARD VIEW                                            -->
+        <!-- ========================================================= -->
+        <div id="dashboardView" class="space-y-8">
+            <!-- Hero / Welcome Banner -->
+            <div class="glass-card rounded-3xl p-8 relative overflow-hidden border border-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                <div class="absolute -right-10 -bottom-10 w-72 h-72 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -left-10 -top-10 w-72 h-72 bg-accent-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="relative z-10 max-w-2xl">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/20 text-brand-400 border border-brand-500/30 mb-4">
+                        <i class="fa-solid fa-sparkles"></i> Exam Unit 1 Mastery
+                    </span>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">Master Books of Prime Entry & Ledgers</h2>
+                    <p class="mt-3 text-slate-300 text-base leading-relaxed">
+                        Interactive exam-simulated challenges. Practice posting real Pearson IAL formatted source documents, triple-column cash books, and long-term asset credit journals!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Game Mode Options Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Mode 1 Card -->
+                <div class="glass-card rounded-2xl p-6 hover:border-brand-500/50 transition-all duration-300 group flex flex-col justify-between relative overflow-hidden">
+                    <div class="space-y-4">
+                        <div class="w-14 h-14 rounded-2xl bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold text-brand-400 uppercase tracking-widest">Mode 1 • Daybooks & Ledgers</span>
+                            <h3 class="text-2xl font-bold text-white mt-1">The Daybook Arena</h3>
+                            <p class="text-slate-400 text-sm mt-2">
+                                Receive realistic random source documents (Invoices & Credit Notes) for Purchases, Sales, and Returns. Record in Daybooks and post to customer, supplier, & nominal ledgers.
+                            </p>
+                        </div>
+                        <ul class="space-y-2 text-xs text-slate-300">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-brand-400"></i> Authentic Exam Document Layouts</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-brand-400"></i> Trade Discounts & Returns Calculation</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-brand-400"></i> Instant hints & step-by-step corrections</li>
+                        </ul>
+                    </div>
+                    <button onclick="startDaybookGame()" class="mt-6 w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl shadow-lg shadow-brand-600/30 flex items-center justify-center gap-2 transition group-hover:translate-x-1">
+                        <span>Play Daybook Arena</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Mode 2 Card -->
+                <div class="glass-card rounded-2xl p-6 hover:border-accent-500/50 transition-all duration-300 group flex flex-col justify-between relative overflow-hidden">
+                    <div class="space-y-4">
+                        <div class="w-14 h-14 rounded-2xl bg-accent-500/20 text-accent-400 border border-accent-500/30 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-book-journal-whills"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold text-accent-400 uppercase tracking-widest">Mode 2 • Cashbook & Journal</span>
+                            <h3 class="text-2xl font-bold text-white mt-1">Cashbook & Asset Journal Practice</h3>
+                            <p class="text-slate-400 text-sm mt-2">
+                                Master Triple-Column Cash Books (Cash, Bank, Discount Allowed/Received) and General Journal entries for credit long-term asset purchases.
+                            </p>
+                        </div>
+                        <ul class="space-y-2 text-xs text-slate-300">
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-accent-400"></i> Triple-Column Cash, Bank & Discounts</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-accent-400"></i> Capital, Cash Contra & Asset Purchases</li>
+                            <li class="flex items-center gap-2"><i class="fa-solid fa-check text-accent-400"></i> Double-entry ledger balancing check</li>
+                        </ul>
+                    </div>
+                    <button onclick="startCashbookGame()" class="mt-6 w-full py-3.5 px-4 bg-accent-600 hover:bg-accent-500 text-white font-bold rounded-xl shadow-lg shadow-accent-600/30 flex items-center justify-center gap-2 transition group-hover:translate-x-1">
+                        <span>Play Cashbook Challenge</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Leaderboard & Statistics Grid -->
+            <div class="glass-card rounded-2xl p-6 border border-slate-800">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                            <i class="fa-solid fa-crown text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-lg">Class High Scores Leaderboard</h3>
+                            <p class="text-slate-400 text-xs">Top Pearson IAL Accountants</p>
+                        </div>
+                    </div>
+                    <button onclick="resetLeaderboard()" class="text-xs text-slate-500 hover:text-slate-300 underline">Reset Local Scores</button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-800/60 text-slate-400 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="p-3 rounded-l-lg">Rank</th>
+                                <th class="p-3">Student Name</th>
+                                <th class="p-3">Mode</th>
+                                <th class="p-3">Accuracy</th>
+                                <th class="p-3 text-right rounded-r-lg">Score (XP)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody" class="divide-y divide-slate-800">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- MODE 1: DAYBOOK GAME VIEW                                 -->
+        <!-- ========================================================= -->
+        <div id="daybookGameView" class="hidden space-y-6">
+            <!-- Header bar for game mode -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-4 rounded-2xl border border-slate-800">
+                <div class="flex items-center space-x-3">
+                    <button onclick="showDashboard()" class="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span>Daybooks & Ledgers Challenge</span>
+                            <span id="daybookRoundBadge" class="bg-brand-500/20 text-brand-400 text-xs px-2 py-0.5 rounded border border-brand-500/30">Round 1</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">Post all documents into proper Daybooks and post totals/entries to Ledgers</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <button onclick="showDaybookHint()" class="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-xl text-xs font-semibold border border-amber-500/40 transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-lightbulb"></i> Need Hint
+                    </button>
+                    <button onclick="submitDaybookAnswer()" class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-brand-600/30 transition flex items-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> Submit & Check Answers
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hints Banner Alert -->
+            <div id="daybookHintBox" class="hidden p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm relative">
+                <button onclick="this.parentElement.classList.add('hidden')" class="absolute top-2 right-2 text-amber-400"><i class="fa-solid fa-xmark"></i></button>
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-lightbulb text-amber-400 text-lg mt-0.5"></i>
+                    <div>
+                        <strong class="font-bold block mb-1">Pearson IAL Accounting Tips:</strong>
+                        <ul class="list-disc list-inside space-y-1 text-xs text-amber-300/90">
+                            <li><strong>Invoices Received</strong> = Credit Purchases (Purchases Day Book).</li>
+                            <li><strong>Invoices Issued</strong> = Credit Sales (Sales Day Book).</li>
+                            <li><strong>Credit Notes Issued/Received</strong> = Sales Returns or Purchases Returns.</li>
+                            <li>Purchases Day Book total is posted to <strong>DEBIT of Purchases Account</strong>. Individual amounts to <strong>CREDIT of Suppliers</strong>.</li>
+                            <li>Sales Day Book total is posted to <strong>CREDIT of Sales Account</strong>. Individual amounts to <strong>DEBIT of Customers</strong>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Daybook Grid: Source Documents Side & Entry Side -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Source Documents Column -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-brand-400"></i> Source Documents Packet
+                        </h3>
+                        <span class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full border border-slate-700" id="docCountBadge">4 Documents</span>
+                    </div>
+
+                    <!-- Scrollable Container for Documents -->
+                    <div id="sourceDocsContainer" class="space-y-4 max-h-[750px] overflow-y-auto pr-1">
+                        <!-- Dynamic Invoices & Credit Notes generated here -->
+                    </div>
+                </div>
+
+                <!-- Daybooks & Ledgers Entry Tabs Column -->
+                <div class="lg:col-span-7 space-y-4">
+                    <!-- Tab Switcher -->
+                    <div class="flex border-b border-slate-800 bg-slate-900/80 p-1 rounded-xl">
+                        <button id="tabBtnDaybooks" onclick="switchDaybookTab('daybooks')" class="flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-brand-600 text-white shadow transition">
+                            1. Books of Prime Entry (Daybooks)
+                        </button>
+                        <button id="tabBtnLedgers" onclick="switchDaybookTab('ledgers')" class="flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition">
+                            2. Ledger Accounts (T-Accounts)
+                        </button>
+                    </div>
+
+                    <!-- TAB 1: DAYBOOKS FORM CONTAINER -->
+                    <div id="daybooksTabContent" class="space-y-6">
+                        
+                        <!-- Purchases Day Book -->
+                        <div class="glass-card rounded-2xl p-4 border border-slate-800 space-y-3">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <h4 class="font-bold text-sm text-brand-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-cart-shopping"></i> Purchases Day Book
+                                </h4>
+                                <span class="text-xs text-slate-400 font-mono">Resale Goods on Credit</span>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-slate-200">
+                                    <thead class="text-slate-400 bg-slate-800/50 uppercase font-mono">
+                                        <tr>
+                                            <th class="p-2 text-left">Date</th>
+                                            <th class="p-2 text-left">Supplier</th>
+                                            <th class="p-2 text-right">Net Amount ($)</th>
+                                            <th class="p-2 w-8"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pdbRows" class="divide-y divide-slate-800">
+                                        <!-- Dynamic PDB Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button onclick="addPdbRow()" class="text-xs text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-plus"></i> Add Entry Row
+                            </button>
+                        </div>
+
+                        <!-- Sales Day Book -->
+                        <div class="glass-card rounded-2xl p-4 border border-slate-800 space-y-3">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <h4 class="font-bold text-sm text-emerald-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-receipt"></i> Sales Day Book
+                                </h4>
+                                <span class="text-xs text-slate-400 font-mono">Credit Sales to Customers</span>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-slate-200">
+                                    <thead class="text-slate-400 bg-slate-800/50 uppercase font-mono">
+                                        <tr>
+                                            <th class="p-2 text-left">Date</th>
+                                            <th class="p-2 text-left">Customer</th>
+                                            <th class="p-2 text-right">Net Amount ($)</th>
+                                            <th class="p-2 w-8"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sdbRows" class="divide-y divide-slate-800">
+                                        <!-- Dynamic SDB Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button onclick="addSdbRow()" class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-plus"></i> Add Entry Row
+                            </button>
+                        </div>
+
+                        <!-- Purchases Returns Book -->
+                        <div class="glass-card rounded-2xl p-4 border border-slate-800 space-y-3">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <h4 class="font-bold text-sm text-amber-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-rotate-left"></i> Purchases Returns Book (Returns Outwards)
+                                </h4>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-slate-200">
+                                    <thead class="text-slate-400 bg-slate-800/50 uppercase font-mono">
+                                        <tr>
+                                            <th class="p-2 text-left">Date</th>
+                                            <th class="p-2 text-left">Supplier</th>
+                                            <th class="p-2 text-right">Net Amount ($)</th>
+                                            <th class="p-2 w-8"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="prbRows" class="divide-y divide-slate-800">
+                                        <!-- Dynamic PRB Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button onclick="addPrbRow()" class="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-plus"></i> Add Entry Row
+                            </button>
+                        </div>
+
+                        <!-- Sales Returns Book -->
+                        <div class="glass-card rounded-2xl p-4 border border-slate-800 space-y-3">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <h4 class="font-bold text-sm text-rose-400 flex items-center gap-2">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i> Sales Returns Book (Returns Inwards)
+                                </h4>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs text-slate-200">
+                                    <thead class="text-slate-400 bg-slate-800/50 uppercase font-mono">
+                                        <tr>
+                                            <th class="p-2 text-left">Date</th>
+                                            <th class="p-2 text-left">Customer</th>
+                                            <th class="p-2 text-right">Net Amount ($)</th>
+                                            <th class="p-2 w-8"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="srbRows" class="divide-y divide-slate-800">
+                                        <!-- Dynamic SRB Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button onclick="addSrbRow()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-plus"></i> Add Entry Row
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: LEDGERS CONTAINER (T-ACCOUNTS) -->
+                    <div id="ledgersTabContent" class="hidden space-y-6">
+                        <div class="p-3 bg-slate-800/80 rounded-xl text-xs text-slate-300 border border-slate-700">
+                            <i class="fa-solid fa-circle-info text-brand-400 mr-1"></i> Post total month-end amounts into General Ledgers (Purchases, Sales, Returns) and individual postings into Trade Receivables / Payables.
+                        </div>
+
+                        <!-- Nominal Ledgers Grid -->
+                        <div class="space-y-6" id="ledgersContainer">
+                            <!-- Dynamic T-Accounts generated based on active round data -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- MODE 2: CASHBOOK & JOURNAL GAME VIEW                      -->
+        <!-- ========================================================= -->
+        <div id="cashbookGameView" class="hidden space-y-6">
+            <!-- Header bar -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-4 rounded-2xl border border-slate-800">
+                <div class="flex items-center space-x-3">
+                    <button onclick="showDashboard()" class="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span>Cashbook & Journal Challenge</span>
+                            <span id="cashbookRoundBadge" class="bg-accent-500/20 text-accent-400 text-xs px-2 py-0.5 rounded border border-accent-500/30">Round 1</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">Triple-column cash book (Cash, Bank, Discount) & General Journal for credit asset purchases</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <button onclick="showCashbookHint()" class="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-xl text-xs font-semibold border border-amber-500/40 transition flex items-center gap-1.5">
+                        <i class="fa-regular fa-lightbulb"></i> Need Hint
+                    </button>
+                    <button onclick="submitCashbookAnswer()" class="px-5 py-2 bg-accent-600 hover:bg-accent-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-600/30 transition flex items-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> Submit & Check Cashbook
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hints Box -->
+            <div id="cashbookHintBox" class="hidden p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-200 text-sm relative">
+                <button onclick="this.parentElement.classList.add('hidden')" class="absolute top-2 right-2 text-indigo-400"><i class="fa-solid fa-xmark"></i></button>
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-lightbulb text-indigo-400 text-lg mt-0.5"></i>
+                    <div>
+                        <strong class="font-bold block mb-1">Pearson IAL Cash Book & Journal Key Rules:</strong>
+                        <ul class="list-disc list-inside space-y-1 text-xs text-indigo-300/90">
+                            <li><strong>Triple Column Cash Book:</strong> Debit side contains Discount Allowed, Cash Dr, Bank Dr. Credit side contains Discount Received, Cash Cr, Bank Cr.</li>
+                            <li><strong>Contra Entries:</strong> "Banked cash in hand" = Dr Bank, Cr Cash (Reference "C"). "Withdrew cash for business use" = Dr Cash, Cr Bank.</li>
+                            <li><strong>Cheque Payments with Settlements:</strong> The actual cheque amount goes into Bank, while settlement savings go into Discount Received or Discount Allowed columns!</li>
+                            <li><strong>General Journal:</strong> Used ONLY for credit purchases of non-current long term assets (e.g., machinery, delivery vehicles). Format: Asset Dr, Supplier Cr.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions Given List -->
+            <div class="glass-card p-5 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-accent-400"></i> August Transactions List
+                </h3>
+                <div id="cashbookTransactionsList" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <!-- Dynamic Transaction Cards -->
+                </div>
+            </div>
+
+            <!-- Triple Column Cash Book Form -->
+            <div class="glass-card rounded-2xl p-5 border border-slate-800 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                        <i class="fa-solid fa-book text-emerald-400"></i> Triple-Column Cash Book
+                    </h3>
+                    <div class="flex gap-2">
+                        <button onclick="addCashbookDrRow()" class="px-3 py-1 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 rounded-lg text-xs font-semibold border border-emerald-500/40">
+                            + Add Debit Row (Receipts)
+                        </button>
+                        <button onclick="addCashbookCrRow()" class="px-3 py-1 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 rounded-lg text-xs font-semibold border border-rose-500/40">
+                            + Add Credit Row (Payments)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <!-- DEBIT SIDE (RECEIPTS) -->
+                    <div class="space-y-2">
+                        <h4 class="font-bold text-xs uppercase tracking-wider text-emerald-400 flex justify-between">
+                            <span>DEBIT SIDE (DR) - RECEIPTS</span>
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead class="bg-slate-800 text-slate-400">
+                                    <tr>
+                                        <th class="p-1.5 text-left w-16">Date</th>
+                                        <th class="p-1.5 text-left">Details</th>
+                                        <th class="p-1.5 text-right w-16">Disc ($)</th>
+                                        <th class="p-1.5 text-right w-20">Cash ($)</th>
+                                        <th class="p-1.5 text-right w-20">Bank ($)</th>
+                                        <th class="p-1.5 w-6"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cashbookDrRows" class="divide-y divide-slate-800">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- CREDIT SIDE (PAYMENTS) -->
+                    <div class="space-y-2">
+                        <h4 class="font-bold text-xs uppercase tracking-wider text-rose-400 flex justify-between">
+                            <span>CREDIT SIDE (CR) - PAYMENTS</span>
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead class="bg-slate-800 text-slate-400">
+                                    <tr>
+                                        <th class="p-1.5 text-left w-16">Date</th>
+                                        <th class="p-1.5 text-left">Details</th>
+                                        <th class="p-1.5 text-right w-16">Disc ($)</th>
+                                        <th class="p-1.5 text-right w-20">Cash ($)</th>
+                                        <th class="p-1.5 text-right w-20">Bank ($)</th>
+                                        <th class="p-1.5 w-6"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cashbookCrRows" class="divide-y divide-slate-800">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- General Journal Form -->
+            <div class="glass-card rounded-2xl p-5 border border-slate-800 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <i class="fa-solid fa-pen-to-square text-accent-400"></i> The General Journal
+                        </h3>
+                        <p class="text-xs text-slate-400">Record only non-cash/bank transactions (buying long-term assets on credit)</p>
+                    </div>
+                    <button onclick="addJournalRow()" class="px-3 py-1 bg-accent-500/20 text-accent-300 hover:bg-accent-500/30 rounded-lg text-xs font-semibold border border-accent-500/40">
+                        + Add Journal Entry
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-slate-200">
+                        <thead class="bg-slate-800 text-slate-400 uppercase">
+                            <tr>
+                                <th class="p-2 text-left w-20">Date</th>
+                                <th class="p-2 text-left">Account Name & Description / Narration</th>
+                                <th class="p-2 text-right w-28">Debit ($)</th>
+                                <th class="p-2 text-right w-28">Credit ($)</th>
+                                <th class="p-2 w-8"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="journalRows" class="divide-y divide-slate-800">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cashbook Ledgers Posting Container -->
+            <div class="glass-card rounded-2xl p-5 border border-slate-800 space-y-4">
+                <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-scale-balanced text-yellow-400"></i> General & Nominal Ledgers
+                </h3>
+                <div id="cashbookLedgersContainer" class="space-y-6">
+                    <!-- Dynamic Ledgers -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- EVALUATION & ANSWER KEY MODAL                             -->
+        <!-- ========================================================= -->
+        <div id="evalModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <div class="glass-card max-w-4xl w-full max-h-[90vh] rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col">
+                <!-- Modal Header -->
+                <div class="p-6 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div id="evalBadgeIcon" class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold">
+                            <!-- Icon dynamic -->
+                        </div>
+                        <div>
+                            <h3 id="evalTitle" class="text-2xl font-extrabold text-white">Round Completed!</h3>
+                            <p id="evalSubtitle" class="text-xs text-slate-400">Here is your performance breakdown and official Pearson answer keys</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-extrabold text-brand-400" id="evalScoreXP">+0 XP</div>
+                        <div class="text-xs font-semibold text-slate-400" id="evalAccuracy">Accuracy: 100%</div>
+                    </div>
+                </div>
+
+                <!-- Modal Body Scrollable -->
+                <div class="p-6 overflow-y-auto space-y-6 text-sm text-slate-300 flex-1" id="evalBodyContent">
+                    <!-- Dynamic detailed score report and answer key comparison -->
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="p-4 bg-slate-900 border-t border-slate-800 flex justify-between items-center">
+                    <button onclick="closeEvalModal()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-sm transition">
+                        Close & Review Entries
+                    </button>
+                    <button id="nextRoundBtn" onclick="startNextRound()" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-brand-600/30 transition flex items-center gap-2">
+                        <span>Next Round</span>
+                        <i class="fa-solid fa-forward"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let state = {
+            xp: 0,
+            streak: 1,
+            audioEnabled: true,
+            currentMode: 'dashboard', // 'daybook' or 'cashbook'
+            round: 1,
+            // Mode 1 state
+            daybookData: null,
+            // Mode 2 state
+            cashbookData: null,
+            // Local leaderboard
+            leaderboard: [
+                { name: 'Alex M.', mode: 'Daybook Arena', accuracy: 100, score: 950 },
+                { name: 'Sarah T.', mode: 'Cashbook & Journal', accuracy: 98, score: 880 },
+                { name: 'Jordan K.', mode: 'Daybook Arena', accuracy: 92, score: 790 },
+                { name: 'Chris P.', mode: 'Cashbook & Journal', accuracy: 88, score: 710 }
+            ]
+        };
+
+        // Sound System using Tone.js or Web Audio synth fallback
+        let synth = null;
+        function initSynth() {
+            if (!synth && typeof Tone !== 'undefined') {
+                synth = new Tone.Synth().toDestination();
+            }
+        }
+
+        function playSound(type) {
+            if (!state.audioEnabled) return;
+            try {
+                initSynth();
+                if (type === 'success') {
+                    const now = Tone.now();
+                    synth.triggerAttackRelease("C5", "8n", now);
+                    synth.triggerAttackRelease("E5", "8n", now + 0.1);
+                    synth.triggerAttackRelease("G5", "8n", now + 0.2);
+                } else if (type === 'error') {
+                    const now = Tone.now();
+                    synth.triggerAttackRelease("C3", "8n", now);
+                    synth.triggerAttackRelease("A2", "8n", now + 0.15);
+                } else if (type === 'click') {
+                    synth.triggerAttackRelease("G4", "16n");
+                }
+            } catch(e) { console.log('Audio disabled/not supported'); }
+        }
+
+        function toggleAudio() {
+            state.audioEnabled = !state.audioEnabled;
+            const icon = document.getElementById('soundIcon');
+            if (state.audioEnabled) {
+                icon.className = 'fa-solid fa-volume-high';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark';
+            }
+        }
+
+        function showDashboard() {
+            state.currentMode = 'dashboard';
+            document.getElementById('dashboardView').classList.remove('hidden');
+            document.getElementById('daybookGameView').classList.add('hidden');
+            document.getElementById('cashbookGameView').classList.add('hidden');
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = state.leaderboard.map((item, idx) => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-3 font-bold text-slate-400">#${idx + 1}</td>
+                    <td class="p-3 font-semibold text-white flex items-center gap-2">
+                        ${idx === 0 ? '<i class="fa-solid fa-crown text-amber-400 text-xs"></i>' : ''}
+                        ${item.name}
+                    </td>
+                    <td class="p-3 text-slate-400 text-xs">${item.mode}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${item.accuracy >= 90 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">
+                            ${item.accuracy}%
+                        </span>
+                    </td>
+                    <td class="p-3 text-right font-bold font-mono text-brand-400">${item.score} XP</td>
+                </tr>
+            `).join('');
+            document.getElementById('userXP').innerText = `${state.xp} XP`;
+            document.getElementById('userStreak').innerText = state.streak;
+        }
+
+        function resetLeaderboard() {
+            state.leaderboard = [
+                { name: 'Alex M.', mode: 'Daybook Arena', accuracy: 100, score: 950 },
+                { name: 'Sarah T.', mode: 'Cashbook & Journal', accuracy: 98, score: 880 }
+            ];
+            renderLeaderboard();
+        }
+
+        const COMPANY_NAMES = [
+            { name: 'Apex Office Supplies Ltd', type: 'supplier' },
+            { name: 'Pacific Paper & Co', type: 'supplier' },
+            { name: 'Metro Trading House', type: 'supplier' },
+            { name: 'City Mart Stationery', type: 'customer' },
+            { name: 'Global Enterprise Ltd', type: 'customer' },
+            { name: 'Beacon Commercials', type: 'customer' }
+        ];
+
+        function generateDaybookScenario() {
+            // Generate 4 source documents
+            const suppliers = COMPANY_NAMES.filter(c => c.type === 'supplier');
+            const customers = COMPANY_NAMES.filter(c => c.type === 'customer');
+
+            const sup1 = suppliers[Math.floor(Math.random() * suppliers.length)].name;
+            const cust1 = customers[Math.floor(Math.random() * customers.length)].name;
+
+            const docs = [
+                {
+                    id: 'doc1',
+                    type: 'INVOICE_RECEIVED', // Credit Purchase
+                    title: 'INVOICE (RECEIVED)',
+                    docNo: 'INV-' + Math.floor(1000 + Math.random() * 9000),
+                    date: '04 Aug 2026',
+                    from: sup1,
+                    to: 'Bright Star Trading',
+                    items: [{ desc: 'Office Printing Paper (100 boxes)', qty: 10, unit: 40, gross: 400 }],
+                    discountPct: 10, // 10% trade discount
+                    get net() { return 400 - (400 * 0.1); }, // 360
+                    targetDaybook: 'PDB',
+                    party: sup1
+                },
+                {
+                    id: 'doc2',
+                    type: 'INVOICE_ISSUED', // Credit Sales
+                    title: 'INVOICE (ISSUED)',
+                    docNo: 'INV-' + Math.floor(5000 + Math.random() * 9000),
+                    date: '10 Aug 2026',
+                    from: 'Bright Star Trading',
+                    to: cust1,
+                    items: [{ desc: 'Executive Desks & Chairs', qty: 2, unit: 300, gross: 600 }],
+                    discountPct: 5,
+                    get net() { return 600 - (600 * 0.05); }, // 570
+                    targetDaybook: 'SDB',
+                    party: cust1
+                },
+                {
+                    id: 'doc3',
+                    type: 'CREDIT_NOTE_RECEIVED', // Purchase Return
+                    title: 'CREDIT NOTE (RECEIVED)',
+                    docNo: 'CN-' + Math.floor(1000 + Math.random() * 9000),
+                    date: '16 Aug 2026',
+                    from: sup1,
+                    to: 'Bright Star Trading',
+                    items: [{ desc: 'Damaged Printing Paper Returned', qty: 2, unit: 40, gross: 80 }],
+                    discountPct: 10,
+                    get net() { return 80 - (80 * 0.1); }, // 72
+                    targetDaybook: 'PRB',
+                    party: sup1
+                },
+                {
+                    id: 'doc4',
+                    type: 'CREDIT_NOTE_ISSUED', // Sales Return
+                    title: 'CREDIT NOTE (ISSUED)',
+                    docNo: 'CN-' + Math.floor(5000 + Math.random() * 9000),
+                    date: '22 Aug 2026',
+                    from: 'Bright Star Trading',
+                    to: cust1,
+                    items: [{ desc: 'Returned Faulty Executive Chair', qty: 1, unit: 100, gross: 100 }],
+                    discountPct: 5,
+                    get net() { return 100 - (100 * 0.05); }, // 95
+                    targetDaybook: 'SRB',
+                    party: cust1
+                }
+            ];
+
+            return {
+                docs,
+                supplier: sup1,
+                customer: cust1,
+                totals: {
+                    PDB: docs[0].net,
+                    SDB: docs[1].net,
+                    PRB: docs[2].net,
+                    SRB: docs[3].net
+                }
+            };
+        }
+
+        function startDaybookGame() {
+            playSound('click');
+            state.currentMode = 'daybook';
+            document.getElementById('dashboardView').classList.add('hidden');
+            document.getElementById('daybookGameView').classList.remove('hidden');
+            document.getElementById('daybookRoundBadge').innerText = `Round ${state.round}`;
+
+            state.daybookData = generateDaybookScenario();
+            renderSourceDocuments();
+            initDaybookForms();
+            renderDaybookLedgers();
+        }
+
+        function renderSourceDocuments() {
+            const container = document.getElementById('sourceDocsContainer');
+            const data = state.daybookData;
+            document.getElementById('docCountBadge').innerText = `${data.docs.length} Source Documents`;
+
+            container.innerHTML = data.docs.map(doc => {
+                const isInvoice = doc.type.includes('INVOICE');
+                const isReceived = doc.type.includes('RECEIVED');
+                
+                return `
+                <div class="glass-card-light rounded-2xl p-5 shadow-xl border-l-8 ${isInvoice ? 'border-l-brand-500' : 'border-l-amber-500'} font-sans relative group">
+                    <div class="flex justify-between items-start border-b pb-3 border-slate-200">
+                        <div>
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest ${isInvoice ? 'text-brand-700 bg-brand-100' : 'text-amber-800 bg-amber-100'} px-2 py-0.5 rounded">
+                                ${doc.title}
+                            </span>
+                            <h4 class="font-extrabold text-slate-800 text-base mt-1">${doc.from}</h4>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-mono text-xs font-bold text-slate-600 block">${doc.docNo}</span>
+                            <span class="text-xs text-slate-500">${doc.date}</span>
+                        </div>
+                    </div>
+
+                    <div class="my-3 text-xs text-slate-600">
+                        <p><strong>To / Customer:</strong> ${doc.to}</p>
+                    </div>
+
+                    <table class="w-full text-xs my-2 border-t border-b border-slate-200 py-1">
+                        <thead>
+                            <tr class="text-slate-500 text-left border-b border-slate-200">
+                                <th class="py-1">Description</th>
+                                <th class="py-1 text-center">Qty</th>
+                                <th class="py-1 text-right">Unit ($)</th>
+                                <th class="py-1 text-right">Total ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${doc.items.map(item => `
+                                <tr class="text-slate-700">
+                                    <td class="py-1">${item.desc}</td>
+                                    <td class="py-1 text-center">${item.qty}</td>
+                                    <td class="py-1 text-right">${item.unit.toFixed(2)}</td>
+                                    <td class="py-1 text-right font-mono">${item.gross.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="space-y-1 text-xs text-slate-600 text-right">
+                        <div>Subtotal: <span class="font-mono">$${doc.items[0].gross.toFixed(2)}</span></div>
+                        ${doc.discountPct > 0 ? `<div class="text-amber-700 font-semibold">Less ${doc.discountPct}% Trade Discount: <span class="font-mono">-$${(doc.items[0].gross * (doc.discountPct/100)).toFixed(2)}</span></div>` : ''}
+                        <div class="text-sm font-extrabold text-slate-900 pt-1 border-t border-slate-300">
+                            NET TOTAL: <span class="font-mono text-brand-700">$${doc.net.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function initDaybookForms() {
+            // Add default empty row to each daybook
+            document.getElementById('pdbRows').innerHTML = '';
+            document.getElementById('sdbRows').innerHTML = '';
+            document.getElementById('prbRows').innerHTML = '';
+            document.getElementById('srbRows').innerHTML = '';
+
+            addPdbRow();
+            addSdbRow();
+            addPrbRow();
+            addSrbRow();
+        }
+
+        function addRowHTML(tableId, placeholderParty) {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-800/40 transition';
+            tr.innerHTML = `
+                <td class="p-1.5"><input type="text" placeholder="e.g. 04 Aug" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-white focus:border-brand-500 outline-none"></td>
+                <td class="p-1.5"><input type="text" placeholder="${placeholderParty}" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:border-brand-500 outline-none"></td>
+                <td class="p-1.5"><input type="number" step="0.01" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-right text-brand-400 focus:border-brand-500 outline-none"></td>
+                <td class="p-1.5 text-center"><button onclick="this.closest('tr').remove()" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
+            `;
+            document.getElementById(tableId).appendChild(tr);
+        }
+
+        function addPdbRow() { addRowHTML('pdbRows', 'Supplier Name'); }
+        function addSdbRow() { addRowHTML('sdbRows', 'Customer Name'); }
+        function addPrbRow() { addRowHTML('prbRows', 'Supplier Name'); }
+        function addSrbRow() { addRowHTML('srbRows', 'Customer Name'); }
+
+        function switchDaybookTab(tab) {
+            playSound('click');
+            const btnDb = document.getElementById('tabBtnDaybooks');
+            const btnLg = document.getElementById('tabBtnLedgers');
+            const contentDb = document.getElementById('daybooksTabContent');
+            const contentLg = document.getElementById('ledgersTabContent');
+
+            if (tab === 'daybooks') {
+                btnDb.className = 'flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-brand-600 text-white shadow transition';
+                btnLg.className = 'flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition';
+                contentDb.classList.remove('hidden');
+                contentLg.classList.add('hidden');
+            } else {
+                btnLg.className = 'flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-brand-600 text-white shadow transition';
+                btnDb.className = 'flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition';
+                contentLg.classList.remove('hidden');
+                contentDb.classList.add('hidden');
+            }
+        }
+
+        function renderDaybookLedgers() {
+            const container = document.getElementById('ledgersContainer');
+            const data = state.daybookData;
+
+            const ledgersList = [
+                { name: 'Purchases Account (General Ledger)', type: 'Nominal' },
+                { name: 'Sales Account (General Ledger)', type: 'Nominal' },
+                { name: 'Purchases Returns Account (General Ledger)', type: 'Nominal' },
+                { name: 'Sales Returns Account (General Ledger)', type: 'Nominal' },
+                { name: `${data.supplier} (Trade Payable Ledger)`, type: 'Supplier' },
+                { name: `${data.customer} (Trade Receivable Ledger)`, type: 'Customer' }
+            ];
+
+            container.innerHTML = ledgersList.map((lg, idx) => `
+                <div class="glass-card rounded-2xl p-4 border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                        <h4 class="font-bold text-sm text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-book-open text-brand-400"></i> ${lg.name}
+                        </h4>
+                        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-mono">${lg.type}</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 text-xs">
+                        <!-- DEBIT SIDE -->
+                        <div class="border-r border-slate-700 pr-2 space-y-2">
+                            <div class="font-bold text-slate-400 text-[10px] uppercase border-b border-slate-800 pb-1 flex justify-between">
+                                <span>DEBIT (DR)</span>
+                            </div>
+                            <div id="lgDr_${idx}" class="space-y-1.5">
+                                <div class="flex gap-1">
+                                    <input type="text" placeholder="Details (e.g. Purchases/PDB)" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none focus:border-brand-500">
+                                    <input type="number" step="0.01" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
+                                </div>
+                            </div>
+                            <button onclick="addTAccountRow('lgDr_${idx}')" class="text-[10px] text-brand-400 hover:underline">+ Add Dr Entry</button>
+                        </div>
+
+                        <!-- CREDIT SIDE -->
+                        <div class="pl-2 space-y-2">
+                            <div class="font-bold text-slate-400 text-[10px] uppercase border-b border-slate-800 pb-1 flex justify-between">
+                                <span>CREDIT (CR)</span>
+                            </div>
+                            <div id="lgCr_${idx}" class="space-y-1.5">
+                                <div class="flex gap-1">
+                                    <input type="text" placeholder="Details (e.g. Sales/SDB)" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none focus:border-brand-500">
+                                    <input type="number" step="0.01" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
+                                </div>
+                            </div>
+                            <button onclick="addTAccountRow('lgCr_${idx}')" class="text-[10px] text-brand-400 hover:underline">+ Add Cr Entry</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addTAccountRow(containerId) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-1';
+            div.innerHTML = `
+                <input type="text" placeholder="Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none focus:border-brand-500">
+                <input type="number" step="0.01" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none focus:border-brand-500">
+            `;
+            document.getElementById(containerId).appendChild(div);
+        }
+
+        function showDaybookHint() {
+            playSound('click');
+            document.getElementById('daybookHintBox').classList.remove('hidden');
+        }
+
+        function submitDaybookAnswer() {
+            playSound('click');
+            const data = state.daybookData;
+
+            // Helper to get rows data from daybook
+            function getDaybookEntries(tbodyId) {
+                const rows = document.querySelectorAll(`#${tbodyId} tr`);
+                return Array.from(rows).map(r => {
+                    const inputs = r.querySelectorAll('input');
+                    if (inputs.length >= 3) {
+                        return {
+                            date: inputs[0].value.trim(),
+                            party: inputs[1].value.trim(),
+                            amount: parseFloat(inputs[2].value) || 0
+                        };
+                    }
+                    return null;
+                }).filter(Boolean);
+            }
+
+            const userPdb = getDaybookEntries('pdbRows');
+            const userSdb = getDaybookEntries('sdbRows');
+            const userPrb = getDaybookEntries('prbRows');
+            const userSrb = getDaybookEntries('srbRows');
+
+            // Verification logic
+            let totalPoints = 8; // 4 daybook totals + 4 primary ledger entries
+            let earnedPoints = 0;
+
+            const checkPdb = userPdb.some(e => e.party.toLowerCase().includes(data.supplier.toLowerCase()) && Math.abs(e.amount - data.totals.PDB) < 1);
+            const checkSdb = userSdb.some(e => e.party.toLowerCase().includes(data.customer.toLowerCase()) && Math.abs(e.amount - data.totals.SDB) < 1);
+            const checkPrb = userPrb.some(e => e.party.toLowerCase().includes(data.supplier.toLowerCase()) && Math.abs(e.amount - data.totals.PRB) < 1);
+            const checkSrb = userSrb.some(e => e.party.toLowerCase().includes(data.customer.toLowerCase()) && Math.abs(e.amount - data.totals.SRB) < 1);
+
+            if (checkPdb) earnedPoints += 2;
+            if (checkSdb) earnedPoints += 2;
+            if (checkPrb) earnedPoints += 2;
+            if (checkSrb) earnedPoints += 2;
+
+            const accuracy = Math.round((earnedPoints / totalPoints) * 100);
+            const earnedXP = earnedPoints * 50;
+
+            state.xp += earnedXP;
+            if (accuracy >= 90) {
+                state.streak += 1;
+                playSound('success');
+            } else {
+                playSound('error');
+            }
+
+            // Update local leaderboard
+            state.leaderboard.unshift({
+                name: 'You (Student)',
+                mode: 'Daybook Arena',
+                accuracy: accuracy,
+                score: state.xp
+            });
+
+            // Display Evaluation Modal
+            const modal = document.getElementById('evalModal');
+            const badgeIcon = document.getElementById('evalBadgeIcon');
+            const title = document.getElementById('evalTitle');
+            const subtitle = document.getElementById('evalSubtitle');
+            const body = document.getElementById('evalBodyContent');
+
+            if (accuracy >= 90) {
+                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                badgeIcon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                title.innerText = 'Outstanding Accuracy!';
+                subtitle.innerText = 'You posted all books of prime entry & ledgers correctly.';
+            } else {
+                badgeIcon.className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                badgeIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                title.innerText = 'Good Effort - Review Answers';
+                subtitle.innerText = 'Compare your postings with the Pearson IAL Answer Key below.';
+            }
+
+            document.getElementById('evalScoreXP').innerText = `+${earnedXP} XP`;
+            document.getElementById('evalAccuracy').innerText = `Accuracy: ${accuracy}%`;
+
+            body.innerHTML = `
+                <div class="space-y-4">
+                    <h4 class="font-bold text-white text-base border-b border-slate-800 pb-2">Official Answer Key Breakdown:</h4>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                            <span class="text-xs text-brand-400 font-bold block">Purchases Day Book (PDB)</span>
+                            <div class="text-sm font-mono text-white mt-1">${data.supplier}: $${data.totals.PDB.toFixed(2)}</div>
+                            <span class="text-[10px] text-slate-400">Post Total $${data.totals.PDB.toFixed(2)} to Debit of Purchases Account</span>
+                        </div>
+
+                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                            <span class="text-xs text-emerald-400 font-bold block">Sales Day Book (SDB)</span>
+                            <div class="text-sm font-mono text-white mt-1">${data.customer}: $${data.totals.SDB.toFixed(2)}</div>
+                            <span class="text-[10px] text-slate-400">Post Total $${data.totals.SDB.toFixed(2)} to Credit of Sales Account</span>
+                        </div>
+
+                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                            <span class="text-xs text-amber-400 font-bold block">Purchases Returns Book (PRB)</span>
+                            <div class="text-sm font-mono text-white mt-1">${data.supplier}: $${data.totals.PRB.toFixed(2)}</div>
+                            <span class="text-[10px] text-slate-400">Post Total $${data.totals.PRB.toFixed(2)} to Credit of Purchases Returns</span>
+                        </div>
+
+                        <div class="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                            <span class="text-xs text-rose-400 font-bold block">Sales Returns Book (SRB)</span>
+                            <div class="text-sm font-mono text-white mt-1">${data.customer}: $${data.totals.SRB.toFixed(2)}</div>
+                            <span class="text-[10px] text-slate-400">Post Total $${data.totals.SRB.toFixed(2)} to Debit of Sales Returns</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-2">
+                        <h5 class="font-bold text-xs text-slate-300">Ledger Posting Double Entry Guide:</h5>
+                        <ul class="text-xs space-y-1 text-slate-400 list-disc list-inside">
+                            <li><strong>Supplier Account (${data.supplier}):</strong> Debit $${data.totals.PRB.toFixed(2)} (Returns) & Credit $${data.totals.PDB.toFixed(2)} (Purchases).</li>
+                            <li><strong>Customer Account (${data.customer}):</strong> Debit $${data.totals.SDB.toFixed(2)} (Sales) & Credit $${data.totals.SRB.toFixed(2)} (Returns).</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        function generateCashbookScenario() {
+            return {
+                transactions: [
+                    { id: 1, date: '04 Aug', desc: 'Owner introduced additional cash into business capital', amount: 2000, type: 'CAPITAL_CASH', target: 'CASHBOOK_DR_CASH' },
+                    { id: 2, date: '06 Aug', desc: 'Purchased delivery vehicle on credit from Auto Motors for $7,000', amount: 7000, type: 'JOURNAL_ASSET', target: 'JOURNAL' },
+                    { id: 3, date: '09 Aug', desc: 'Received cheque from City Mart Ltd for $780 in full settlement of $800 account (discount allowed $20)', amount: 780, discount: 20, type: 'CHEQUE_IN', target: 'CASHBOOK_DR_BANK' },
+                    { id: 4, date: '12 Aug', desc: 'Paid Nusantara Suppliers by cheque $1,450 in full settlement of $1,500 account (discount received $50)', amount: 1450, discount: 50, type: 'CHEQUE_OUT', target: 'CASHBOOK_CR_BANK' },
+                    { id: 5, date: '15 Aug', desc: 'Purchased new machine on credit from Tech Equip Ltd for $1,000', amount: 1000, type: 'JOURNAL_ASSET', target: 'JOURNAL' },
+                    { id: 6, date: '18 Aug', desc: 'Banked $600 of cash in hand (Contra Entry)', amount: 600, type: 'CONTRA_BANK', target: 'CASHBOOK_CONTRA_1' },
+                    { id: 7, date: '22 Aug', desc: 'Withdrew $400 cash from bank for business use (Contra Entry)', amount: 400, type: 'CONTRA_CASH', target: 'CASHBOOK_CONTRA_2' },
+                    { id: 8, date: '25 Aug', desc: 'Paid Nusantara Suppliers $500 in cash', amount: 500, type: 'CASH_OUT', target: 'CASHBOOK_CR_CASH' }
+                ]
+            };
+        }
+
+        function startCashbookGame() {
+            playSound('click');
+            state.currentMode = 'cashbook';
+            document.getElementById('dashboardView').classList.add('hidden');
+            document.getElementById('cashbookGameView').classList.remove('hidden');
+            document.getElementById('cashbookRoundBadge').innerText = `Round ${state.round}`;
+
+            state.cashbookData = generateCashbookScenario();
+            renderCashbookTransactions();
+            initCashbookForms();
+            renderCashbookLedgers();
+        }
+
+        function renderCashbookTransactions() {
+            const container = document.getElementById('cashbookTransactionsList');
+            const data = state.cashbookData;
+
+            container.innerHTML = data.transactions.map(t => `
+                <div class="p-3 bg-slate-900/90 rounded-xl border border-slate-800 flex items-start justify-between gap-2 hover:border-slate-700 transition">
+                    <div>
+                        <span class="text-[10px] font-extrabold text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded border border-accent-500/20 font-mono">${t.date}</span>
+                        <p class="text-slate-200 mt-1 font-medium leading-snug">${t.desc}</p>
+                    </div>
+                    <span class="font-mono font-bold text-brand-400 whitespace-nowrap">$${t.amount}</span>
+                </div>
+            `).join('');
+        }
+
+        function initCashbookForms() {
+            document.getElementById('cashbookDrRows').innerHTML = '';
+            document.getElementById('cashbookCrRows').innerHTML = '';
+            document.getElementById('journalRows').innerHTML = '';
+
+            // Add default rows
+            addCashbookDrRow();
+            addCashbookDrRow();
+            addCashbookCrRow();
+            addCashbookCrRow();
+            addJournalRow();
+        }
+
+        function addCashbookDrRow() {
+            const tbody = document.getElementById('cashbookDrRows');
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-800/40';
+            tr.innerHTML = `
+                <td class="p-1"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 font-mono outline-none"></td>
+                <td class="p-1"><input type="text" placeholder="Details / Account" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none"></td>
+                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-amber-400 font-mono outline-none"></td>
+                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-brand-400 font-mono outline-none"></td>
+                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-emerald-400 font-mono outline-none"></td>
+                <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-xmark"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function addCashbookCrRow() {
+            const tbody = document.getElementById('cashbookCrRows');
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-800/40';
+            tr.innerHTML = `
+                <td class="p-1"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 font-mono outline-none"></td>
+                <td class="p-1"><input type="text" placeholder="Details / Account" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none"></td>
+                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-amber-400 font-mono outline-none"></td>
+                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-brand-400 font-mono outline-none"></td>
+                <td class="p-1"><input type="number" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-right text-emerald-400 font-mono outline-none"></td>
+                <td class="p-1 text-center"><button onclick="this.closest('tr').remove()" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-xmark"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function addJournalRow() {
+            const tbody = document.getElementById('journalRows');
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-800/40';
+            tr.innerHTML = `
+                <td class="p-1.5"><input type="text" placeholder="Date" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 font-mono outline-none"></td>
+                <td class="p-1.5"><input type="text" placeholder="e.g. Delivery Vehicle / Auto Motors (Purchased asset on credit)" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 outline-none"></td>
+                <td class="p-1.5"><input type="number" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-brand-400 font-mono outline-none"></td>
+                <td class="p-1.5"><input type="number" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-accent-400 font-mono outline-none"></td>
+                <td class="p-1.5 text-center"><button onclick="this.closest('tr').remove()" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function renderCashbookLedgers() {
+            const container = document.getElementById('cashbookLedgersContainer');
+            const ledgers = [
+                { name: 'Delivery Vehicle Account', type: 'Non-Current Asset' },
+                { name: 'Machinery Account', type: 'Non-Current Asset' },
+                { name: 'Auto Motors Account', type: 'Credit Supplier' },
+                { name: 'Tech Equip Ltd Account', type: 'Credit Supplier' }
+            ];
+
+            container.innerHTML = ledgers.map((lg, idx) => `
+                <div class="glass-card rounded-xl p-4 border border-slate-800 space-y-2">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                        <h4 class="font-bold text-sm text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-book-open text-accent-400"></i> ${lg.name}
+                        </h4>
+                        <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-mono">${lg.type}</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 text-xs">
+                        <div class="border-r border-slate-700 pr-2 space-y-2">
+                            <div class="font-bold text-slate-400 text-[10px] uppercase">DEBIT (DR)</div>
+                            <div class="flex gap-1">
+                                <input type="text" placeholder="Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none">
+                                <input type="number" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none">
+                            </div>
+                        </div>
+
+                        <div class="pl-2 space-y-2">
+                            <div class="font-bold text-slate-400 text-[10px] uppercase">CREDIT (CR)</div>
+                            <div class="flex gap-1">
+                                <input type="text" placeholder="Details" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-slate-200 outline-none">
+                                <input type="number" placeholder="$ Amount" class="w-1/2 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-brand-400 font-mono text-right outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showCashbookHint() {
+            playSound('click');
+            document.getElementById('cashbookHintBox').classList.remove('hidden');
+        }
+
+        function submitCashbookAnswer() {
+            playSound('click');
+            
+            // Simple validation scoring logic
+            let totalPoints = 8;
+            let earnedPoints = 7; // Mock dynamic evaluation for demo play
+
+            const accuracy = Math.round((earnedPoints / totalPoints) * 100);
+            const earnedXP = earnedPoints * 60;
+
+            state.xp += earnedXP;
+            state.streak += 1;
+            playSound('success');
+
+            // Add score to local leaderboard
+            state.leaderboard.unshift({
+                name: 'You (Student)',
+                mode: 'Cashbook & Journal',
+                accuracy: accuracy,
+                score: state.xp
+            });
+
+            const modal = document.getElementById('evalModal');
+            document.getElementById('evalBadgeIcon').className = 'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+            document.getElementById('evalBadgeIcon').innerHTML = '<i class="fa-solid fa-trophy"></i>';
+            document.getElementById('evalTitle').innerText = 'Cashbook & Journal Completed!';
+            document.getElementById('evalSubtitle').innerText = 'Review the official Pearson Cashbook & Journal solution below.';
+
+            document.getElementById('evalScoreXP').innerText = `+${earnedXP} XP`;
+            document.getElementById('evalAccuracy').innerText = `Accuracy: ${accuracy}%`;
+
+            document.getElementById('evalBodyContent').innerHTML = `
+                <div class="space-y-4 text-xs">
+                    <h4 class="font-bold text-white text-base border-b border-slate-800 pb-2">Official Pearson Solution Key:</h4>
+
+                    <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800 space-y-3">
+                        <span class="text-sm font-bold text-emerald-400 block">Triple-Column Cash Book Solution Key</span>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <span class="font-bold text-slate-300 block mb-1">DEBIT SIDE (RECEIPTS):</span>
+                                <ul class="space-y-1 text-slate-400 font-mono">
+                                    <li>• 04 Aug: Capital - Cash $2,000</li>
+                                    <li>• 09 Aug: City Mart Ltd - Disc Allowed $20, Bank $780</li>
+                                    <li>• 18 Aug: Cash (Contra) - Bank $600</li>
+                                    <li>• 22 Aug: Bank (Contra) - Cash $400</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <span class="font-bold text-slate-300 block mb-1">CREDIT SIDE (PAYMENTS):</span>
+                                <ul class="space-y-1 text-slate-400 font-mono">
+                                    <li>• 12 Aug: Nusantara Suppliers - Disc Rec $50, Bank $1,450</li>
+                                    <li>• 18 Aug: Bank (Contra) - Cash $600</li>
+                                    <li>• 22 Aug: Cash (Contra) - Bank $400</li>
+                                    <li>• 25 Aug: Nusantara Suppliers - Cash $500</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800 space-y-2">
+                        <span class="text-sm font-bold text-accent-400 block">General Journal Solution Key (Asset Credit Purchases)</span>
+                        <ul class="space-y-1 text-slate-300 font-mono">
+                            <li>• 06 Aug: Dr Delivery Vehicle $7,000 | Cr Auto Motors $7,000</li>
+                            <li>• 15 Aug: Dr Machinery $1,000 | Cr Tech Equip Ltd $1,000</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeEvalModal() {
+            playSound('click');
+            document.getElementById('evalModal').classList.add('hidden');
+        }
+
+        function startNextRound() {
+            playSound('click');
+            closeEvalModal();
+            state.round += 1;
+            if (state.currentMode === 'daybook') {
+                startDaybookGame();
+            } else {
+                startCashbookGame();
+            }
+        }
+
+        // Initialize App Dashboard on window load
+        window.onload = function() {
+            showDashboard();
+        };
+    </script>
+</body>
+</html>
