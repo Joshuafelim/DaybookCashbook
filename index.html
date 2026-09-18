@@ -119,7 +119,7 @@
       <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-4 flex justify-between items-center">
         <div>
           <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Active Company</div>
-          <div id="companyNameDisplay" class="text-base font-bold text-indigo-100">BRIGHT STAR TRADING</div>
+          <div id="companyNameDisplay" class="text-base font-bold text-indigo-100">DYNAMIC COMPANY CO.</div>
         </div>
         <div class="text-xs text-slate-300 bg-indigo-900/50 px-3 py-1 rounded-md border border-indigo-700/50 font-semibold">
           Role: Chief Accountant
@@ -386,6 +386,7 @@
     let player = { nickname: 'Guest', xp: 0, streak: 0 };
     let currentMode = 1;
     let currentRoundDocs = [];
+    let currentCompany = null;
     let currentCashbookScenario = null;
     let globalLeaderboard = [];
 
@@ -509,26 +510,38 @@
       if (mode === 2 && !currentCashbookScenario) initCashbookScenario();
     }
 
-    // --- DAYBOOK GENERATION LOGIC ---
-    const COMPANY_NAME = "BRIGHT STAR TRADING";
-    const COMPANY_ADDR = "12 Merdeka Street, Jakarta 10110";
-    const COMPANY_TEL = "Tel: 021-555-1200 | sales@brightstar.co.id";
+    // --- RANDOMIZATION DATA POOLS ---
+    const PLAYER_COMPANIES = [
+      { name: "APEX GLOBAL TRADING", addr: "88 Sudirman Plaza, Jakarta 12190", tel: "Tel: 021-555-8800 | sales@apexglobal.co.id" },
+      { name: "BRIGHT STAR TRADING", addr: "12 Merdeka Street, Jakarta 10110", tel: "Tel: 021-555-1200 | sales@brightstar.co.id" },
+      { name: "AURORA ENTERPRISES", addr: "45 Gatot Subroto, Jakarta 12930", tel: "Tel: 021-555-4321 | info@auroraent.co.id" },
+      { name: "PACIFIC SUPPLY CO.", addr: "101 Harbor View, Surabaya 60175", tel: "Tel: 031-777-9900 | orders@pacificsupply.co.id" },
+      { name: "NEXUS DISTRIBUTORS", addr: "23 Asia Afrika, Bandung 40111", tel: "Tel: 022-444-6600 | support@nexusdist.id" }
+    ];
 
     const SUPPLIERS = [
-      { name: "NUSANTARA SUPPLIERS", addr: "77 Industrial Estate, Bekasi 17510", tel: "Tel: 021-888-3400 | orders@nusantara.id" },
-      { name: "GLOBAL PAPER CO.", addr: "9 Paper Mill Road, Tangerang", tel: "Tel: 021-777-2100" }
+      { name: "NUSANTARA SUPPLIERS", addr: "77 Industrial Estate, Bekasi 17510", tel: "Tel: 021-888-3400" },
+      { name: "GLOBAL PAPER CO.", addr: "9 Paper Mill Road, Tangerang 15111", tel: "Tel: 021-777-2100" },
+      { name: "DELTA TECH SUPPLIES", addr: "303 Innovation Park, Cikarang 17530", tel: "Tel: 021-890-5544" },
+      { name: "SUMATRA TIMBER & GOODS", addr: "14 Logistics Hub, Medan 20112", tel: "Tel: 061-451-2233" }
     ];
 
     const CUSTOMERS = [
       { name: "Green Valley Stores", addr: "45 Orchard Road, Bandung" },
-      { name: "City Mart Ltd", addr: "88 High Street, Surabaya" }
+      { name: "City Mart Ltd", addr: "88 High Street, Surabaya" },
+      { name: "Horizon Retail Group", addr: "12 Palm Avenue, Bali" },
+      { name: "Metro Superstore", addr: "55 Central Boulevard, Semarang" }
     ];
 
     const SAMPLE_ITEMS = [
       { desc: "Office chairs (Model A)", buyPrice: 55.00, sellPrice: 85.00 },
       { desc: "Desk lamps", buyPrice: 14.00, sellPrice: 22.50 },
       { desc: "Printer paper (reams)", buyPrice: 3.20, sellPrice: 4.80 },
-      { desc: "Filing cabinets", buyPrice: 95.00, sellPrice: 160.00 }
+      { desc: "Filing cabinets", buyPrice: 95.00, sellPrice: 160.00 },
+      { desc: "Ergonomic Keyboards", buyPrice: 28.00, sellPrice: 45.00 },
+      { desc: "LED Monitors 24 inch", buyPrice: 110.00, sellPrice: 175.00 },
+      { desc: "Executive Leather Desks", buyPrice: 210.00, sellPrice: 350.00 },
+      { desc: "Wireless Headphones", buyPrice: 40.00, sellPrice: 68.00 }
     ];
 
     function initRound() {
@@ -539,49 +552,72 @@
 
     function generateDaybookScenario() {
       currentRoundDocs = [];
-      const types = ['PI', 'SI', 'PR', 'SR'];
       
-      for (let i = 0; i < 4; i++) {
-        const type = types[i];
-        const item = SAMPLE_ITEMS[i % SAMPLE_ITEMS.length];
-        const qty = (i % 2 === 0) ? 10 : 25;
-        const discountRate = (i % 2 === 0) ? 5 : 0;
-        
-        const unitPrice = (type === 'PI' || type === 'PR') ? item.buyPrice : item.sellPrice;
-        const subtotal = qty * unitPrice;
-        const discountVal = (subtotal * discountRate) / 100;
-        const netAmount = subtotal - discountVal;
+      // Randomize player company each round
+      currentCompany = PLAYER_COMPANIES[Math.floor(Math.random() * PLAYER_COMPANIES.length)];
+      document.getElementById('companyNameDisplay').innerText = currentCompany.name;
 
-        const supplier = SUPPLIERS[i % SUPPLIERS.length];
-        const customer = CUSTOMERS[i % CUSTOMERS.length];
+      // Randomize number of documents (between 4 and 6 documents per round)
+      const docCount = Math.floor(Math.random() * 3) + 4; 
+
+      // Available document types pool: ['PI', 'SI', 'PR', 'SR']
+      const possibleTypes = ['PI', 'SI', 'PR', 'SR'];
+
+      for (let i = 0; i < docCount; i++) {
+        // Randomly pick document type (allows varied counts, e.g., multiple PIs, zero SRs, etc.)
+        const type = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+        
+        // Pick random item, supplier, customer
+        const item = SAMPLE_ITEMS[Math.floor(Math.random() * SAMPLE_ITEMS.length)];
+        const supplier = SUPPLIERS[Math.floor(Math.random() * SUPPLIERS.length)];
+        const customer = CUSTOMERS[Math.floor(Math.random() * CUSTOMERS.length)];
+
+        // Randomize quantity (5 to 50) and trade discount rate (0%, 5%, 10%, 15%, 20%)
+        const qty = (Math.floor(Math.random() * 9) + 1) * 5; 
+        const discountRates = [0, 5, 10, 15, 20];
+        const discountRate = discountRates[Math.floor(Math.random() * discountRates.length)];
+        
+        // Dynamic price calculation
+        const baseUnitPrice = (type === 'PI' || type === 'PR') ? item.buyPrice : item.sellPrice;
+        // Random slight variation in unit price (+/- 10%)
+        const priceVariation = (Math.random() * 0.2 - 0.1) * baseUnitPrice;
+        const unitPrice = parseFloat((baseUnitPrice + priceVariation).toFixed(2));
+        
+        const subtotal = parseFloat((qty * unitPrice).toFixed(2));
+        const discountVal = parseFloat(((subtotal * discountRate) / 100).toFixed(2));
+        const netAmount = parseFloat((subtotal - discountVal).toFixed(2));
+
+        const randomDay = (i + 1) * 4 + Math.floor(Math.random() * 3);
+        const docDate = `${Math.min(randomDay, 28)} August 2026`;
 
         let docNo = "";
-        if (type === 'PI') docNo = `PI-${8815 + i}`;
-        if (type === 'SI') docNo = `SI-${2401 + i}`;
-        if (type === 'PR') docNo = `CN-P${330 + i}`;
-        if (type === 'SR') docNo = `CN-S${90 + i}`;
+        const randNum = Math.floor(Math.random() * 800) + 100;
+        if (type === 'PI') docNo = `PI-${8000 + randNum}`;
+        if (type === 'SI') docNo = `SI-${2000 + randNum}`;
+        if (type === 'PR') docNo = `CN-P${300 + randNum}`;
+        if (type === 'SR') docNo = `CN-S${100 + randNum}`;
 
         currentRoundDocs.push({
           id: i + 1,
           type,
           docNo,
-          date: `${(i + 1) * 3} August 2026`,
-          issuerName: (type === 'SI' || type === 'SR') ? COMPANY_NAME : supplier.name,
-          issuerAddr: (type === 'SI' || type === 'SR') ? COMPANY_ADDR : supplier.addr,
-          issuerTel: (type === 'SI' || type === 'SR') ? COMPANY_TEL : supplier.tel,
+          date: docDate,
+          issuerName: (type === 'SI' || type === 'SR') ? currentCompany.name : supplier.name,
+          issuerAddr: (type === 'SI' || type === 'SR') ? currentCompany.addr : supplier.addr,
+          issuerTel: (type === 'SI' || type === 'SR') ? currentCompany.tel : supplier.tel,
           recipientLabel: (type === 'SI' || type === 'SR') ? "Customer:" : "Sold to:",
-          recipientName: (type === 'SI' || type === 'SR') ? customer.name : COMPANY_NAME,
-          recipientAddr: (type === 'SI' || type === 'SR') ? customer.addr : COMPANY_ADDR,
+          recipientName: (type === 'SI' || type === 'SR') ? customer.name : currentCompany.name,
+          recipientAddr: (type === 'SI' || type === 'SR') ? customer.addr : currentCompany.addr,
           partyName: (type === 'PI' || type === 'PR') ? supplier.name : customer.name,
           docTitle: (type === 'PI' || type === 'SI') ? "INVOICE" : "CREDIT NOTE",
-          itemDesc: (type === 'PR' || type === 'SR') ? `${item.desc} - damaged` : item.desc,
+          itemDesc: (type === 'PR' || type === 'SR') ? `${item.desc} (Returned)` : item.desc,
           qty,
           unitPrice,
           subtotal,
           discountRate,
           discountVal,
           netAmount,
-          refNote: (type === 'PR') ? `Return against Invoice PI-${8815 + i - 2}` : (type === 'SR' ? `Return of goods from Invoice SI-${2401 + i - 2}` : null)
+          refNote: (type === 'PR') ? `Return against Ref Invoice PI-${8000 + randNum}` : (type === 'SR' ? `Return against Ref Invoice SI-${2000 + randNum}` : null)
         });
       }
       renderSourceDocuments();
@@ -641,7 +677,7 @@
           <div class="border-t border-slate-300 pt-2 space-y-0.5 text-[11px] text-right">
             ${doc.discountRate > 0 ? `
               <div><span class="text-slate-600">Subtotal:</span> $${doc.subtotal.toFixed(2)}</div>
-              <div><span class="text-slate-600">Trade Discount ${doc.discountRate}%:</span> $${doc.discountVal.toFixed(2)}</div>
+              <div><span class="text-slate-600">Trade Discount ${doc.discountRate}\%:</span>$${doc.discountVal.toFixed(2)}</div>
             ` : ''}
             <div class="font-black text-xs text-black pt-0.5 border-t border-slate-400 inline-block pl-4">
               TOTAL: $${doc.netAmount.toFixed(2)}
@@ -686,12 +722,15 @@
     function renderDaybookLedgers() {
       const container = document.getElementById('daybookLedgerContainer');
       container.innerHTML = '';
-      const accounts = [
-        { name: 'Nusantara Suppliers Account' },
-        { name: 'Green Valley Stores Account' },
+      
+      // Dynamic party names from the active documents
+      const uniqueParties = Array.from(new Set(currentRoundDocs.map(d => d.partyName)));
+      const accounts = uniqueParties.map(p => ({ name: `${p} Account` })).concat([
         { name: 'Purchases Account' },
-        { name: 'Sales Account' }
-      ];
+        { name: 'Sales Account' },
+        { name: 'Purchases Returns Account' },
+        { name: 'Sales Returns Account' }
+      ]);
 
       accounts.forEach(acc => {
         const accId = acc.name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -732,23 +771,53 @@
     }
 
     function evaluateDaybookAndLedgers() {
+      // Dynamic evaluation based on randomized currentRoundDocs
       const correctPdb = currentRoundDocs.filter(d => d.type === 'PI').reduce((s, d) => s + d.netAmount, 0);
-      const getUserTotal = id => Array.from(document.querySelectorAll(`#${id} .db-amount`)).reduce((s, input) => s + (parseFloat(input.value) || 0), 0);
-      
-      const userPdb = getUserTotal('pdbTable');
-      const accuracy = Math.abs(userPdb - correctPdb) < 1 ? 100 : 50;
+      const correctSdb = currentRoundDocs.filter(d => d.type === 'SI').reduce((s, d) => s + d.netAmount, 0);
+      const correctPrb = currentRoundDocs.filter(d => d.type === 'PR').reduce((s, d) => s + d.netAmount, 0);
+      const correctSrb = currentRoundDocs.filter(d => d.type === 'SR').reduce((s, d) => s + d.netAmount, 0);
 
-      triggerDopamineWin(accuracy, "Daybooks & Ledgers Evaluation", `Entered PDB: $${userPdb.toFixed(2)} | Target: $${correctPdb.toFixed(2)}`);
+      const getUserTotal = id => Array.from(document.querySelectorAll(`#${id} .db-amount`)).reduce((s, input) => s + (parseFloat(input.value) || 0), 0);
+
+      const userPdb = getUserTotal('pdbTable');
+      const userSdb = getUserTotal('sdbTable');
+      const userPrb = getUserTotal('prbTable');
+      const userSrb = getUserTotal('srbTable');
+
+      let matches = 0;
+      if (Math.abs(userPdb - correctPdb) < 0.5) matches++;
+      if (Math.abs(userSdb - correctSdb) < 0.5) matches++;
+      if (Math.abs(userPrb - correctPrb) < 0.5) matches++;
+      if (Math.abs(userSrb - correctSrb) < 0.5) matches++;
+
+      const accuracy = Math.round((matches / 4) * 100);
+
+      const breakdownHTML = `
+        <div>PDB: $${userPdb.toFixed(2)} (Target: $${correctPdb.toFixed(2)})</div>
+        <div>SDB: $${userSdb.toFixed(2)} (Target: $${correctSdb.toFixed(2)})</div>
+        <div>PRB: $${userPrb.toFixed(2)} (Target: $${correctPrb.toFixed(2)})</div>
+        <div>SRB: $${userSrb.toFixed(2)} (Target: $${correctSrb.toFixed(2)})</div>
+      `;
+
+      triggerDopamineWin(accuracy, "Daybooks & Ledgers Evaluation", breakdownHTML);
     }
 
     // --- MODE 2: CASHBOOK & JOURNAL SCENARIO ---
     function initCashbookScenario() {
+      const capitalAmt = (Math.floor(Math.random() * 8) + 4) * 1000;
+      const recAmt = Math.floor(Math.random() * 4 + 2) * 100;
+      const recDisc = 50;
+      const payAmt = Math.floor(Math.random() * 5 + 4) * 100;
+      const payDisc = 40;
+      const equipAmt = Math.floor(Math.random() * 10 + 10) * 100;
+
       currentCashbookScenario = {
+        capitalAmt, recAmt, recDisc, payAmt, payDisc, equipAmt,
         transactions: [
-          { date: "1 Aug", desc: "Capital invested into Bank: $5,000" },
-          { date: "8 Aug", desc: "Received cheque from Green Valley Stores: $450 ($50 disc allowed)" },
-          { date: "12 Aug", desc: "Paid Nusantara Suppliers by cheque: $800 ($40 disc received)" },
-          { date: "25 Aug", desc: "Purchased Office Equipment on credit: $1,200" }
+          { date: "1 Aug", desc: `Capital invested into Bank: $${capitalAmt.toLocaleString()}` },
+          { date: "8 Aug", desc: `Received cheque from Customer: $${recAmt} ($${recDisc} discount allowed)` },
+          { date: "12 Aug", desc: `Paid Supplier by cheque: $${payAmt} ($${payDisc} discount received)` },
+          { date: "25 Aug", desc: `Purchased Office Equipment on credit: $${equipAmt.toLocaleString()}` }
         ]
       };
       renderCashbookTransactions();
@@ -810,8 +879,8 @@
       const container = document.getElementById('cashbookLedgerContainer');
       container.innerHTML = '';
       const accounts = [
-        { name: 'Trade Receivables (Green Valley Stores)' },
-        { name: 'Trade Payables (Nusantara Suppliers)' },
+        { name: 'Trade Receivables Account' },
+        { name: 'Trade Payables Account' },
         { name: 'Discounts Allowed Account' },
         { name: 'Discounts Received Account' }
       ];
@@ -844,9 +913,10 @@
     function evaluateCashbookAndLedgers() {
       const getBankTotal = id => Array.from(document.querySelectorAll(`#${id} .cb-bank`)).reduce((s, input) => s + (parseFloat(input.value) || 0), 0);
       const userBankDr = getBankTotal('cbDrTable');
-      const accuracy = userBankDr >= 5000 ? 100 : 50;
+      const targetBankDr = currentCashbookScenario.capitalAmt + currentCashbookScenario.recAmt;
+      const accuracy = Math.abs(userBankDr - targetBankDr) < 1 ? 100 : 50;
 
-      triggerDopamineWin(accuracy, "Cashbook & Ledgers Evaluation", `Bank Receipts Recorded: $${userBankDr.toFixed(2)} | Target: $5,450.00`);
+      triggerDopamineWin(accuracy, "Cashbook & Ledgers Evaluation", `Bank Receipts Recorded: $${userBankDr.toFixed(2)} | Target: $${targetBankDr.toFixed(2)}`);
     }
 
     // --- DOPAMINE WIN TRIGGER & MODALS ---
